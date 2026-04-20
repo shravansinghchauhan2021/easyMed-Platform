@@ -359,49 +359,6 @@ def init_db():
             pass # Column already exists
 
     conn.commit()
-    conn.close()
-    # Migration: Add patient_id to notifications if it doesn't exist
-    if not is_postgres:
-        try:
-            db_execute(conn, 'ALTER TABLE notifications ADD COLUMN patient_id INTEGER')
-            db_execute(conn, 'ALTER TABLE notifications ADD COLUMN read_status BOOLEAN DEFAULT FALSE')
-        except:
-            pass # Already exists
-
-    # Smart Medicine Migrations
-    for col in [
-        'consciousness_level', 'speech_condition', 'motor_function', 'seizure_history',
-        'gender', 'heart_rate', 'specialist_type', 'tumor_details', 'cancer_history',
-        'kidney_function', 'urine_reports', 'skin_condition', 'rash_description', 
-        'breathing_condition', 'priority_level'
-    ]:
-        try:
-            conn.execute(f'ALTER TABLE patients ADD COLUMN {col} TEXT')
-        except sqlite3.OperationalError:
-            pass
-            
-    try:
-        conn.execute('ALTER TABLE patients ADD COLUMN assigned_doctor_id INTEGER')
-    except sqlite3.OperationalError:
-        pass
-
-    try:
-        conn.execute('ALTER TABLE patients ADD COLUMN headache_severity INTEGER')
-    except sqlite3.OperationalError:
-        pass
-
-    # Migration: Add status to users if it doesn't exist
-    try:
-        conn.execute("ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'Offline'")
-    except sqlite3.OperationalError:
-        pass
-        
-    # Migration: Add read_status to notifications if it doesn't exist
-    try:
-        conn.execute('ALTER TABLE notifications ADD COLUMN read_status BOOLEAN DEFAULT 0')
-    except sqlite3.OperationalError:
-        pass 
-    
     conn.commit()
     conn.close()
 

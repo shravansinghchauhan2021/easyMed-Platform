@@ -251,6 +251,9 @@ def init_db():
             problem_description TEXT,
             report_file TEXT,
             priority TEXT DEFAULT 'Normal',
+            priority_level TEXT DEFAULT 'Normal',
+            risk_level TEXT DEFAULT 'Low',
+            predicted_condition TEXT DEFAULT 'General Consultation',
             rural_doctor_id INTEGER,
             specialist_id INTEGER,
             specialist_type TEXT DEFAULT 'Neurologist',
@@ -299,7 +302,7 @@ def init_db():
         ('patients', 'consciousness_level', 'TEXT'),
         ('patients', 'speech_condition', 'TEXT'),
         ('patients', 'motor_function', 'TEXT'),
-        ('patients', 'headache_severity', 'INTEGER'),
+        ('patients', 'headache_severity', 'TEXT'),
         ('patients', 'seizure_history', 'TEXT'),
         ('patients', 'tumor_details', 'TEXT'),
         ('patients', 'cancer_history', 'TEXT'),
@@ -308,11 +311,10 @@ def init_db():
         ('patients', 'skin_condition', 'TEXT'),
         ('patients', 'rash_description', 'TEXT'),
         ('patients', 'breathing_condition', 'TEXT'),
-        ('patients', 'risk_level', 'TEXT DEFAULT \'Low\''),
-        ('patients', 'predicted_condition', 'TEXT DEFAULT \'General Consultation\''),
+        ('patients', 'risk_level', "TEXT DEFAULT 'Low'"),
+        ('patients', 'predicted_condition', "TEXT DEFAULT 'General Consultation'"),
         ('patients', 'final_diagnosis', 'TEXT'),
         ('patients', 'final_recommendations', 'TEXT'),
-        ('patients', 'report_file_path', 'TEXT'),
         ('patients', 'priority_level', 'TEXT'),
         ('patients', 'assigned_doctor_id', 'INTEGER')
     ]
@@ -428,7 +430,7 @@ def login():
             
             # Set user status to Online
             conn = get_db_connection()
-            db_execute(conn, 'UPDATE users SET status = "Online" WHERE id = ?', (user['id'],))
+            db_execute(conn, "UPDATE users SET status = 'Online' WHERE id = ?", (user['id'],))
             conn.commit()
             conn.close()
             
@@ -457,7 +459,7 @@ def logout():
     if 'user_id' in session:
         # Set user status to Offline
         conn = get_db_connection()
-        db_execute(conn, 'UPDATE users SET status = "Offline" WHERE id = ?', (session['user_id'],))
+        db_execute(conn, "UPDATE users SET status = 'Offline' WHERE id = ?", (session['user_id'],))
         conn.commit()
         conn.close()
         
@@ -488,8 +490,15 @@ def register():
             
             try:
                 conn = get_db_connection()
-                db_execute(conn, 'INSERT INTO users (username, profession, mobile_number, password) VALUES (?, ?, ?, ?)',
+                db_execute(conn, "INSERT INTO users (username, profession, mobile_number, password) VALUES (?, ?, ?, ?)",
                              (username, profession, mobile_number, hashed_password))
+                
+                # LINKAGE: Link existing patients with this mobile number to this new account
+                if profession == 'Patient':
+                    user = db_execute(conn, "SELECT id FROM users WHERE username = ?", (username,)).fetchone()
+                    if user:
+                        db_execute(conn, "UPDATE patients SET patient_user_id = ? WHERE patient_mobile = ?", (user['id'], mobile_number))
+                
                 conn.commit()
                 conn.close()
                 
@@ -659,11 +668,11 @@ def rural_dashboard():
     pending_patients = db_execute(conn, 'SELECT COUNT(*) FROM patients WHERE rural_doctor_id = ? AND status = ?', (session['user_id'], 'Pending')).fetchone()[0]
     
     # Get all patients for this rural doctor (Emergency first)
-    patients = db_execute(conn, 'SELECT p.*, s.username as specialist_name \
+    patients = db_execute(conn, "SELECT p.*, s.username as specialist_name \
                              FROM patients p \
                              LEFT JOIN users s ON p.specialist_id = s.id \
                              WHERE p.rural_doctor_id = ? \
-                             ORDER BY CASE WHEN p.priority = "Emergency" THEN 0 ELSE 1 END, p.id DESC', (session['user_id'],)).fetchall()
+                             ORDER BY CASE WHEN p.priority = 'Emergency' THEN 0 ELSE 1 END, p.id DESC", (session['user_id'],)).fetchall()
                              
     # Get unread notifications
     notifications = db_execute(conn, 'SELECT * FROM notifications WHERE user_id = ? ORDER BY id DESC LIMIT 10', (session['user_id'],)).fetchall()
@@ -743,7 +752,7 @@ def my_patients():
             FROM patients p 
             LEFT JOIN users s ON p.specialist_id = s.id 
             WHERE p.rural_doctor_id = ? 
-            ORDER BY CASE WHEN p.priority = "Emergency" THEN 0 ELSE 1 END, p.id DESC
+            ORDER BY CASE WHEN p.priority = 'Emergency' THEN 0 ELSE 1 END, p.id DESC
         ''', (session['user_id'],)).fetchall()
     else: 
         # Specialists see only their specialty AND assigned to them (or unassigned/pending)
@@ -791,7 +800,7 @@ def pending_requests():
         query += ' AND p.priority = ?'
         params.append(priority_filter)
         
-    query += ' ORDER BY CASE WHEN p.priority = "Emergency" THEN 0 ELSE 1 END, p.id DESC'
+    query += " ORDER BY CASE WHEN p.priority = 'Emergency' THEN 0 ELSE 1 END, p.id DESC"
     
     patients = db_execute(conn, query, params).fetchall()
     
@@ -927,7 +936,7 @@ def add_patient():
     conn = get_db_connection()
     
     # Try to find corresponding Patient Account
-    patient_user = db_execute(conn, 'SELECT id FROM users WHERE mobile_number = ? AND profession = "Patient"', (patient_mobile,)).fetchone()
+    patient_user = db_execute(conn, "SELECT id FROM users WHERE mobile_number = ? AND profession = 'Patient'", (patient_mobile,)).fetchone()
     patient_user_id = patient_user['id'] if patient_user else None
 
     # For Postgres, we can use INSERT ... RETURNING id

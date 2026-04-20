@@ -95,9 +95,9 @@ def init_db():
     ''')
     
     for table_sql in [
-        f'CREATE TABLE IF NOT EXISTS messages (id {pk_style}, patient_id INTEGER, sender_id INTEGER, message TEXT, file_path TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)',
-        f'CREATE TABLE IF NOT EXISTS notifications (id {pk_style}, user_id INTEGER, patient_id INTEGER, message TEXT, link TEXT, read_status BOOLEAN DEFAULT FALSE, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)',
-        f'CREATE TABLE IF NOT EXISTS medical_images (id {pk_style}, patient_id INTEGER, file_path TEXT, modality TEXT, sequence_type TEXT, uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP)'
+        f'CREATE TABLE IF NOT EXISTS messages (id {pk_style}, patient_id INTEGER, sender_id INTEGER, message TEXT, file_path TEXT, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)',
+        f'CREATE TABLE IF NOT EXISTS notifications (id {pk_style}, user_id INTEGER, patient_id INTEGER, message TEXT, link TEXT, read_status BOOLEAN DEFAULT FALSE, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)',
+        f'CREATE TABLE IF NOT EXISTS medical_images (id {pk_style}, patient_id INTEGER, file_path TEXT, modality TEXT, sequence_type TEXT, uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)'
     ]:
         db_execute(conn, table_sql)
     
@@ -337,27 +337,6 @@ def create_notification(user_id, message, link="#", patient_id=None, conn=None):
     if close_conn:
         conn.commit()
         conn.close()
-
-# Initialize database on first request
-_db_initialized = False
-
-@app.before_request
-def startup_init():
-    global _db_initialized
-    if not _db_initialized:
-        try:
-            print(">>> Starting first-request database initialization...", flush=True)
-            init_db()
-            print(">>> Database initialized successfully on first request!", flush=True)
-            _db_initialized = True
-        except Exception as e:
-            print("\n" + "!"*60)
-            print("CRITICAL ERROR DURING INITIAL REQUEST SETUP:")
-            print(str(e))
-            print("="*60)
-            traceback.print_exc()
-            print("!"*60 + "\n", flush=True)
-            # We don't set _db_initialized to True so it tries again on next request
 
 @app.route('/privacy')
 def privacy():

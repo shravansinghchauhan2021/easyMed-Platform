@@ -1,5 +1,5 @@
 import eventlet
-eventlet.monkey_patch()
+eventlet.monkey_patch(all=True)
 
 # Standard imports
 import os
@@ -65,10 +65,7 @@ def init_db():
     if is_postgres:
         print("\n" + "="*50)
         print("[SYSTEM] Database Status: CONNECTED TO PERMANENT POSTGRESQL")
-        print("[DB-INIT] Wiping and Rebuilding corrupted tables...", flush=True)
-        # NUCLEAR RESET: Clear everything to fix the corrupted Brain
-        db_execute(conn, 'DROP TABLE IF EXISTS users, patients, messages, notifications, medical_images CASCADE')
-        conn.commit()
+        print("[SYSTEM] Schema sync in progress...", flush=True)
     else:
         print("\n" + "!"*50)
         print("[SYSTEM] Database Status: USING TEMPORARY LOCAL SQLITE")
@@ -82,7 +79,7 @@ def init_db():
             username TEXT UNIQUE,
             password TEXT,
             profession TEXT,
-            mobile_number TEXT,
+            mobile_number TEXT UNIQUE,
             status TEXT DEFAULT 'Offline'
         )
     ''')
@@ -311,12 +308,12 @@ def predict_disease(symptoms, specialty):
 def find_best_specialist(specialist_type):
     conn = get_db_connection()
     # Try to find an Online specialist
-    spec = conn.execute('SELECT id, username FROM users WHERE profession = ? AND status = "Online" LIMIT 1', (specialist_type,)).fetchone()
+    spec = db_execute(conn, 'SELECT id, username FROM users WHERE profession = ? AND status = ? LIMIT 1', (specialist_type, 'Online')).fetchone()
     if spec:
         conn.close()
         return spec['id'], spec['username'], True
     
-    spec = conn.execute('SELECT id, username FROM users WHERE profession = ? LIMIT 1', (specialist_type,)).fetchone()
+    spec = db_execute(conn, 'SELECT id, username FROM users WHERE profession = ? LIMIT 1', (specialist_type,)).fetchone()
     conn.close()
     if spec:
         return spec['id'], spec['username'], False
@@ -997,10 +994,10 @@ def delete_patient(patient_id):
         return redirect(url_for('login'))
         
     conn = get_db_connection()
-    conn.execute('DELETE FROM patients WHERE id = ?', (patient_id,))
-    conn.execute('DELETE FROM messages WHERE patient_id = ?', (patient_id,))
-    conn.execute('DELETE FROM notifications WHERE patient_id = ?', (patient_id,))
-    conn.execute('DELETE FROM medical_images WHERE patient_id = ?', (patient_id,))
+    db_execute(conn, 'DELETE FROM patients WHERE id = ?', (patient_id,))
+    db_execute(conn, 'DELETE FROM messages WHERE patient_id = ?', (patient_id,))
+    db_execute(conn, 'DELETE FROM notifications WHERE patient_id = ?', (patient_id,))
+    db_execute(conn, 'DELETE FROM medical_images WHERE patient_id = ?', (patient_id,))
     conn.commit()
     conn.close()
     
@@ -1245,7 +1242,7 @@ def chat(patient_id):
         return redirect(url_for('login'))
         
     conn = get_db_connection()
-    patient = conn.execute('SELECT * FROM patients WHERE id = ?', (patient_id,)).fetchone()
+    patient = db_execute(conn, 'SELECT * FROM patients WHERE id = ?', (patient_id,)).fetchone()
     
     if not patient:
         conn.close()
@@ -1407,7 +1404,7 @@ def mark_notifications_read():
         return jsonify({'success': False})
     
     conn = get_db_connection()
-    conn.execute('UPDATE notifications SET read_status = 1 WHERE user_id = ?', (session['user_id'],))
+    db_execute(conn, 'UPDATE notifications SET read_status = 1 WHERE user_id = ?', (session['user_id'],))
     conn.commit()
     conn.close()
     
@@ -1419,12 +1416,12 @@ def accept_case(patient_id):
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     
     conn = get_db_connection()
-    patient = conn.execute('SELECT * FROM patients WHERE id = ?', (patient_id,)).fetchone()
+    patient = db_execute(conn, 'SELECT * FROM patients WHERE id = ?', (patient_id,)).fetchone()
     if not patient:
         conn.close()
         return jsonify({'success': False, 'message': 'Patient not found'}), 404
         
-    conn.execute('UPDATE patients SET status = ?, specialist_id = ? WHERE id = ?', ('Accepted', session['user_id'], patient_id))
+    db_execute(conn, 'UPDATE patients SET status = ?, specialist_id = ? WHERE id = ?', ('Accepted', session['user_id'], patient_id))
     create_notification(patient['rural_doctor_id'], f"Case Accepted: {patient['patient_name']}", url_for('rural_dashboard'), patient_id=patient_id, conn=conn)
     if patient['patient_user_id']:
         create_notification(patient['patient_user_id'], f"Case Accepted: Dr. {session['username']} has taken your case.", url_for('patient_case_view', patient_id=patient_id), patient_id=patient_id, conn=conn)
@@ -1435,8 +1432,8 @@ def accept_case(patient_id):
 
 def generate_pdf_report(patient_id, filename, diagnosis, recommendations):
     conn = get_db_connection()
-    patient = conn.execute('SELECT * FROM patients WHERE id = ?', (patient_id,)).fetchone()
-    messages = conn.execute('SELECT m.message, m.timestamp, u.username FROM messages m JOIN users u ON m.sender_id = u.id WHERE m.patient_id = ? ORDER BY m.timestamp ASC', (patient_id,)).fetchall()
+    patient = db_execute(conn, 'SELECT * FROM patients WHERE id = ?', (patient_id,)).fetchone()
+    messages = db_execute(conn, 'SELECT m.message, m.timestamp, u.username FROM messages m JOIN users u ON m.sender_id = u.id WHERE m.patient_id = ? ORDER BY m.timestamp ASC', (patient_id,)).fetchall()
     conn.close()
 
     if not patient:
@@ -1503,8 +1500,7 @@ def complete_case(patient_id):
     recommendations = request.form.get('recommendations', 'Follow-up as needed.')
     
     conn = get_db_connection()
-    patient = conn.execute('SELECT * FROM patients WHERE id = ? AND specialist_id = ?', 
-                          (patient_id, session['user_id'])).fetchone()
+    patient = db_execute(conn, 'SELECT * FROM patients WHERE id = ? AND specialist_id = ?', (patient_id, session['user_id'])).fetchone()
     
     if not patient:
         conn.close()
@@ -1537,7 +1533,7 @@ def complete_case(patient_id):
 def generate_report(patient_id):
     if 'user_id' not in session: return redirect(url_for('login'))
     conn = get_db_connection()
-    patient = conn.execute('SELECT report_file_path FROM patients WHERE id = ?', (patient_id,)).fetchone()
+    patient = db_execute(conn, 'SELECT report_file_path FROM patients WHERE id = ?', (patient_id,)).fetchone()
     conn.close()
     if patient and patient['report_file_path']:
         return send_from_directory(app.config['UPLOAD_FOLDER'], patient['report_file_path'])
@@ -1566,7 +1562,7 @@ def api_analyze_scan(patient_id):
         return jsonify({'success': False, 'message': 'Unauthorized. AI Analysis is for clinical professionals only.'}), 401
         
     conn = get_db_connection()
-    patient = conn.execute('SELECT * FROM patients WHERE id = ?', (patient_id,)).fetchone()
+    patient = db_execute(conn, 'SELECT * FROM patients WHERE id = ?', (patient_id,)).fetchone()
     
     if not patient:
         conn.close()

@@ -1,24 +1,44 @@
-import sqlite3
 import os
 import requests
 import json
+import sqlite3
+import psycopg2
+from psycopg2 import extras
 from datetime import datetime
+
+# --- Step 1: Database Link Setup ---
+DATABASE = 'database.db'
+DATABASE_URL = os.environ.get('DATABASE_URL')
 
 # Mock OpenAI and Search API keys - these should be set in environment variables
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "your_openai_key_here")
 SERPAPI_KEY = os.getenv("SERPAPI_KEY", "your_serpapi_key_here")
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'database.db')
-
 def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    if DATABASE_URL:
+        if DATABASE_URL.startswith('postgres://'):
+            url = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+            return psycopg2.connect(url)
+        return psycopg2.connect(DATABASE_URL)
+    else:
+        conn = sqlite3.connect(DATABASE)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+def db_execute(conn, query, args=()):
+    is_postgres = hasattr(conn, 'cursor_factory') or DATABASE_URL is not None
+    if is_postgres:
+        query = query.replace('?', '%s')
+        cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
+        cursor.execute(query, args)
+        return cursor
+    else:
+        return conn.execute(query, args)
 
 def fetch_patient_data(patient_name):
     """Fetch patient details by name matching."""
     conn = get_db_connection()
-    patient = conn.execute("SELECT * FROM patients WHERE patient_name LIKE ?", (f'%{patient_name}%',)).fetchone()
+    patient = db_execute(conn, "SELECT * FROM patients WHERE patient_name LIKE ?", (f'%{patient_name}%',)).fetchone()
     conn.close()
     if patient:
         return dict(patient)
@@ -27,7 +47,7 @@ def fetch_patient_data(patient_name):
 def fetch_conversation_history(patient_id):
     """Fetch all messages for a specific patient case."""
     conn = get_db_connection()
-    messages = conn.execute("""
+    messages = db_execute(conn, """
         SELECT m.*, u.username, u.profession 
         FROM messages m 
         JOIN users u ON m.sender_id = u.id 
@@ -41,11 +61,11 @@ def fetch_cases_by_criteria(criteria_type, value):
     """Fetch a list of cases based on status or priority."""
     conn = get_db_connection()
     if criteria_type == "status":
-        cases = conn.execute("SELECT * FROM patients WHERE status = ?", (value,)).fetchall()
+        cases = db_execute(conn, "SELECT * FROM patients WHERE status = ?", (value,)).fetchall()
     elif criteria_type == "priority":
-        cases = conn.execute("SELECT * FROM patients WHERE priority = ?", (value,)).fetchall()
+        cases = db_execute(conn, "SELECT * FROM patients WHERE priority = ?", (value,)).fetchall()
     elif criteria_type == "specialty":
-        cases = conn.execute("SELECT * FROM patients WHERE specialist_type = ?", (value,)).fetchall()
+        cases = db_execute(conn, "SELECT * FROM patients WHERE specialist_type = ?", (value,)).fetchall()
     else:
         cases = []
     conn.close()
@@ -237,7 +257,7 @@ def process_chatbot_query(user_query, current_user_id, patient_id=None):
     """
 
     conn = get_db_connection()
-    patients_list = conn.execute("SELECT id, patient_name FROM patients").fetchall()
+    patients_list = db_execute(conn, "SELECT id, patient_name FROM patients").fetchall()
     conn.close()
 
     mentioned_patient = None

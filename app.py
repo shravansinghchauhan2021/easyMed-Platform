@@ -58,6 +58,20 @@ def db_get_last_rowid(conn, cursor):
     else:
         return cursor.lastrowid
 
+def db_get_count(conn, query, args=()):
+    """Safely get a COUNT(*) value across SQLite and Postgres"""
+    is_postgres = hasattr(conn, 'cursor_factory') or DATABASE_URL is not None
+    if is_postgres:
+        query = query.replace('?', '%s')
+        if "COUNT(*)" in query and "as count" not in query.lower():
+            query = query.replace("COUNT(*)", "COUNT(*) as count")
+        cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
+        cursor.execute(query, args)
+        res = cursor.fetchone()
+        return res['count'] if res else 0
+    else:
+        return conn.execute(query, args).fetchone()[0]
+
 def init_db():
     conn = get_db_connection()
     is_postgres = DATABASE_URL is not None
@@ -65,10 +79,7 @@ def init_db():
     if is_postgres:
         print("\n" + "="*50)
         print("[SYSTEM] Database Status: CONNECTED TO PERMANENT POSTGRESQL")
-        print("[SYSTEM] Final Reset in progress (Wiping old corrupted data)...", flush=True)
-        # FINAL CLEAR: Wiping old corruption to start fresh as requested
-        db_execute(conn, 'DROP TABLE IF EXISTS users, patients, messages, notifications, medical_images CASCADE')
-        conn.commit()
+        print("[SYSTEM] Production Schema Active.", flush=True)
     else:
         print("\n" + "!"*50)
         print("[SYSTEM] Database Status: USING TEMPORARY LOCAL SQLITE")
@@ -615,9 +626,9 @@ def rural_dashboard():
         return redirect(url_for('login'))
     
     conn = get_db_connection()
-    total_patients = db_execute(conn, 'SELECT COUNT(*) FROM patients WHERE rural_doctor_id = ?', (session['user_id'],)).fetchone()[0]
-    reviewed_patients = db_execute(conn, "SELECT COUNT(*) FROM patients WHERE rural_doctor_id = ? AND status IN ('Accepted', 'Reviewed', 'Rejected', 'Completed')", (session['user_id'],)).fetchone()[0]
-    pending_patients = db_execute(conn, 'SELECT COUNT(*) FROM patients WHERE rural_doctor_id = ? AND status = ?', (session['user_id'], 'Pending')).fetchone()[0]
+    total_patients = db_get_count(conn, 'SELECT COUNT(*) FROM patients WHERE rural_doctor_id = ?', (session['user_id'],))
+    reviewed_patients = db_get_count(conn, "SELECT COUNT(*) FROM patients WHERE rural_doctor_id = ? AND status IN ('Accepted', 'Reviewed', 'Rejected', 'Completed')", (session['user_id'],))
+    pending_patients = db_get_count(conn, 'SELECT COUNT(*) FROM patients WHERE rural_doctor_id = ? AND status = ?', (session['user_id'], 'Pending'))
     
     # Get all patients for this rural doctor (Emergency first)
     patients = db_execute(conn, "SELECT p.*, s.username as specialist_name \
@@ -1084,10 +1095,10 @@ def analytics_dashboard():
     
     # 4. General Stats
     stats = {
-        'total': db_execute(conn, 'SELECT COUNT(*) FROM patients').fetchone()[0],
-        'high_risk': db_execute(conn, "SELECT COUNT(*) FROM patients WHERE risk_level = 'High'").fetchone()[0],
-        'reviewed': db_execute(conn, "SELECT COUNT(*) FROM patients WHERE status = 'Reviewed'").fetchone()[0],
-        'pending': db_execute(conn, "SELECT COUNT(*) FROM patients WHERE status = 'Pending'").fetchone()[0]
+        'total': db_get_count(conn, 'SELECT COUNT(*) FROM patients'),
+        'high_risk': db_get_count(conn, "SELECT COUNT(*) FROM patients WHERE risk_level = 'High'"),
+        'reviewed': db_get_count(conn, "SELECT COUNT(*) FROM patients WHERE status = 'Reviewed'"),
+        'pending': db_get_count(conn, "SELECT COUNT(*) FROM patients WHERE status = 'Pending'")
     }
     
     # Notifications for header
@@ -1188,20 +1199,20 @@ def specialist_dashboard():
                                       (session['user_id'], 'Accepted', 'Reviewed', 'Completed')).fetchall()
                                       
     # Specialty Statistics (Assigned to current user)
-    total_system_patients = db_execute(conn, 'SELECT COUNT(*) FROM patients WHERE specialist_type = ? AND (specialist_id = ? OR specialist_id IS NULL)', (session['profession'], session['user_id'])).fetchone()[0]
-    total_pending_patients = db_execute(conn, 'SELECT COUNT(*) FROM patients WHERE status = ? AND specialist_type = ? AND (specialist_id = ? OR specialist_id IS NULL)', ('Pending', session['profession'], session['user_id'])).fetchone()[0]
+    total_system_patients = db_get_count(conn, 'SELECT COUNT(*) FROM patients WHERE specialist_type = ? AND (specialist_id = ? OR specialist_id IS NULL)', (session['profession'], session['user_id']))
+    total_pending_patients = db_get_count(conn, 'SELECT COUNT(*) FROM patients WHERE status = ? AND specialist_type = ? AND (specialist_id = ? OR specialist_id IS NULL)', ('Pending', session['profession'], session['user_id']))
     
     # Specialty-specific counters
     specialty_stats = {
-        'emergency_cases': db_execute(conn, "SELECT COUNT(*) FROM patients WHERE priority = 'Emergency' AND specialist_type = ?", (session['profession'],)).fetchone()[0],
-        'reviewed_cases': db_execute(conn, "SELECT COUNT(*) FROM patients WHERE status = 'Reviewed' AND specialist_id = ?", (session['user_id'],)).fetchone()[0]
+        'emergency_cases': db_get_count(conn, "SELECT COUNT(*) FROM patients WHERE priority = 'Emergency' AND specialist_type = ?", (session['profession'],)),
+        'reviewed_cases': db_get_count(conn, "SELECT COUNT(*) FROM patients WHERE status = 'Reviewed' AND specialist_id = ?", (session['user_id'],))
     }
     
     # Add context-specific stats for Neurologist for backward compatibility/demo
     if session['profession'] == 'Neurologist':
-        specialty_stats['stroke_suspicion'] = db_execute(conn, "SELECT COUNT(*) FROM patients WHERE specialist_type = 'Neurologist' AND (consciousness_level = 'Unconscious' OR speech_condition != 'Normal')").fetchone()[0]
+        specialty_stats['stroke_suspicion'] = db_get_count(conn, "SELECT COUNT(*) FROM patients WHERE specialist_type = 'Neurologist' AND (consciousness_level = 'Unconscious' OR speech_condition != 'Normal')")
     elif session['profession'] == 'Cardiologist':
-        specialty_stats['heart_critical'] = db_execute(conn, "SELECT COUNT(*) FROM patients WHERE specialist_type = 'Cardiologist' AND (heart_rate > 100 OR heart_rate < 60)").fetchone()[0]
+        specialty_stats['heart_critical'] = db_get_count(conn, "SELECT COUNT(*) FROM patients WHERE specialist_type = 'Cardiologist' AND (heart_rate > 100 OR heart_rate < 60)")
 
     # Get unread notifications
     notifications = db_execute(conn, 'SELECT * FROM notifications WHERE user_id = ? ORDER BY id DESC LIMIT 10', (session['user_id'],)).fetchall()

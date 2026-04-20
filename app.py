@@ -1,8 +1,18 @@
+import eventlet
+eventlet.monkey_patch()
+
+# Standard imports
 import os
 import sqlite3
 import traceback
 import psycopg2
 from psycopg2 import extras
+try:
+    from psycogreen.eventlet import patch_psycopg
+    patch_psycopg()
+    print(">>> [SUCCESS] Psycogreen Activated (PostgreSQL is now Green)", flush=True)
+except ImportError:
+    print(">>> [INFO] Psycogreen not found, using standard mode.", flush=True)
 
 # --- Step 1: Database Link Setup ---
 DATABASE = 'database.db'
@@ -20,7 +30,7 @@ if DATABASE_URL:
     elif DATABASE_URL.startswith('postgres://'):
         DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
 
-# --- Step 2: Database Initialization (Done BEFORE Speed Booster) ---
+# --- Step 2: Database Helpers ---
 def get_db_connection():
     if DATABASE_URL:
         return psycopg2.connect(DATABASE_URL)
@@ -35,8 +45,10 @@ def db_execute(conn, query, args=()):
         query = query.replace('?', '%s')
         cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
         cursor.execute(query, args)
+        return cursor
     else:
-        cursor = conn.execute(query, args)
+        return conn.execute(query, args)
+
 def db_get_last_rowid(conn, cursor):
     """Handles getting the last inserted ID across databases"""
     is_postgres = hasattr(conn, 'cursor_factory') or DATABASE_URL is not None
@@ -134,9 +146,7 @@ except Exception as e:
     print(f"DIAGNOSTIC ERROR IN INIT: {e}")
     traceback.print_exc()
 
-# --- Step 3: Async/Socket Setup (AFTER database is ready) ---
-import eventlet
-eventlet.monkey_patch()
+# --- Step 3: Global Logic & Flask App Setup ---
 
 import random
 import requests
@@ -430,17 +440,12 @@ def register():
                     if user:
                         db_execute(conn, "UPDATE patients SET patient_user_id = ? WHERE patient_mobile = ?", (user['id'], mobile_number))
                 
-                conn.commit()
-                conn.close()
-                
-                # Clear session variables
-                session.pop('registration_otp', None)
-                session.pop('registration_mobile', None)
-                
                 flash('Registration successful! Please login.', 'success')
                 return redirect(url_for('login'))
-            except sqlite3.IntegrityError:
-                flash('Mobile number already registered.', 'error')
+            except Exception as e:
+                # Log the actual error for the developer
+                print(f"ERROR DURING REGISTRATION DB OP: {e}", flush=True)
+                flash('Username or mobile number already registered.', 'error')
         else:
             flash('Invalid or expired OTP.', 'error')
             return render_template('register.html', username=username, profession=profession, mobile=mobile_number)
@@ -461,12 +466,15 @@ def send_registration_otp():
         return jsonify({'success': False, 'message': 'Mobile number is required'})
 
     # Check if mobile already exists
-    conn = get_db_connection()
-    user = db_execute(conn, 'SELECT id FROM users WHERE mobile_number = ?', (mobile,)).fetchone()
-    conn.close()
-
-    if user:
-        return jsonify({'success': False, 'message': 'Mobile number already registered'})
+    try:
+        conn = get_db_connection()
+        user = db_execute(conn, 'SELECT id FROM users WHERE mobile_number = ?', (mobile,)).fetchone()
+        conn.close()
+        if user:
+            return jsonify({'success': False, 'message': 'Mobile number already registered'})
+    except Exception as e:
+        print(f"DATABASE ERROR in send_registration_otp: {e}", flush=True)
+        # Fallback: Proceed even if DB check fails, or inform user
 
     # Generate OTP
     otp = random.randint(100000, 999999)

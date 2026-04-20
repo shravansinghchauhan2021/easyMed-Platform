@@ -1,8 +1,143 @@
+import os
+import sqlite3
+import traceback
+import psycopg2
+from psycopg2 import extras
+
+# --- Step 1: Database Link Setup ---
+DATABASE = 'database.db'
+DATABASE_URL = os.environ.get('DATABASE_URL')
+
+# Fix logic: Clean the URL and check for common typos
+if DATABASE_URL:
+    DATABASE_URL = DATABASE_URL.strip()
+    # Check if the user accidentally pasted the name "DATABASE_URL" as the VALUE
+    if DATABASE_URL == "DATABASE_URL" or not DATABASE_URL.startswith("post"):
+        print("\n" + "!"*60)
+        print("⚠️  [WARNING] DATABASE_URL is invalid or a typo. Using local backup.")
+        print("!"*60 + "\n", flush=True)
+        DATABASE_URL = None
+    elif DATABASE_URL.startswith('postgres://'):
+        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+
+# --- Step 2: Database Initialization (Done BEFORE Speed Booster) ---
+def get_db_connection():
+    if DATABASE_URL:
+        return psycopg2.connect(DATABASE_URL)
+    else:
+        conn = sqlite3.connect(DATABASE)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+def db_execute(conn, query, args=()):
+    is_postgres = hasattr(conn, 'cursor_factory') or DATABASE_URL is not None
+    if is_postgres:
+        query = query.replace('?', '%s')
+        cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
+        cursor.execute(query, args)
+    else:
+        cursor = conn.execute(query, args)
+def db_get_last_rowid(conn, cursor):
+    """Handles getting the last inserted ID across databases"""
+    is_postgres = hasattr(conn, 'cursor_factory') or DATABASE_URL is not None
+    if is_postgres:
+        cursor.execute("SELECT LASTVAL()")
+        return cursor.fetchone()['lastval']
+    else:
+        return cursor.lastrowid
+
+def init_db():
+    conn = get_db_connection()
+    is_postgres = DATABASE_URL is not None
+    
+    if is_postgres:
+        print("\n" + "="*50)
+        print("[SYSTEM] Database Status: CONNECTED TO PERMANENT POSTGRESQL")
+        print("="*50 + "\n", flush=True)
+    else:
+        print("\n" + "!"*50)
+        print("[SYSTEM] Database Status: USING TEMPORARY LOCAL SQLITE")
+        print("!"*50 + "\n", flush=True)
+
+    pk_style = "SERIAL PRIMARY KEY" if is_postgres else "INTEGER PRIMARY KEY AUTOINCREMENT"
+    
+    db_execute(conn, f'''
+        CREATE TABLE IF NOT EXISTS users (
+            id {pk_style},
+            username TEXT UNIQUE,
+            password TEXT,
+            profession TEXT,
+            mobile_number TEXT,
+            status TEXT DEFAULT 'Offline'
+        )
+    ''')
+    
+    if not is_postgres:
+        try:
+            db_execute(conn, 'ALTER TABLE users ADD COLUMN mobile_number TEXT')
+        except: pass
+    
+    db_execute(conn, f'''
+        CREATE TABLE IF NOT EXISTS patients (
+            id {pk_style}, patient_name TEXT, patient_mobile TEXT, patient_user_id INTEGER,
+            age INTEGER, gender TEXT, blood_pressure TEXT, heart_rate TEXT, oxygen_level TEXT,
+            problem_description TEXT, report_file TEXT, priority TEXT DEFAULT 'Normal',
+            priority_level TEXT DEFAULT 'Normal', risk_level TEXT DEFAULT 'Low',
+            predicted_condition TEXT DEFAULT 'General Consultation', ai_prediction TEXT,
+            scan_analysis_report TEXT, consciousness_level TEXT, speech_condition TEXT,
+            motor_function TEXT, headache_severity TEXT, seizure_history TEXT,
+            tumor_details TEXT, cancer_history TEXT, kidney_function TEXT, urine_reports TEXT,
+            skin_condition TEXT, rash_description TEXT, breathing_condition TEXT,
+            final_diagnosis TEXT, final_recommendations TEXT, assigned_doctor_id INTEGER,
+            rural_doctor_id INTEGER, specialist_id INTEGER, specialist_type TEXT DEFAULT 'Neurologist',
+            status TEXT DEFAULT 'Pending', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    for table_sql in [
+        f'CREATE TABLE IF NOT EXISTS messages (id {pk_style}, patient_id INTEGER, sender_id INTEGER, message TEXT, file_path TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)',
+        f'CREATE TABLE IF NOT EXISTS notifications (id {pk_style}, user_id INTEGER, patient_id INTEGER, message TEXT, link TEXT, read_status BOOLEAN DEFAULT FALSE, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)',
+        f'CREATE TABLE IF NOT EXISTS medical_images (id {pk_style}, patient_id INTEGER, file_path TEXT, modality TEXT, sequence_type TEXT, uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP)'
+    ]:
+        db_execute(conn, table_sql)
+    
+    cols_to_add = [
+        ('patients', 'patient_user_id', 'INTEGER'), ('patients', 'risk_level', "TEXT DEFAULT 'Low'"),
+        ('patients', 'predicted_condition', "TEXT DEFAULT 'General Consultation'"),
+        ('patients', 'ai_prediction', 'TEXT'), ('patients', 'scan_analysis_report', 'TEXT'),
+        ('patients', 'consciousness_level', 'TEXT'), ('patients', 'speech_condition', 'TEXT'),
+        ('patients', 'motor_function', 'TEXT'), ('patients', 'headache_severity', 'TEXT'),
+        ('patients', 'seizure_history', 'TEXT'), ('patients', 'tumor_details', 'TEXT'),
+        ('patients', 'cancer_history', 'TEXT'), ('patients', 'kidney_function', 'TEXT'),
+        ('patients', 'urine_reports', 'TEXT'), ('patients', 'skin_condition', 'TEXT'),
+        ('patients', 'rash_description', 'TEXT'), ('patients', 'breathing_condition', 'TEXT'),
+        ('patients', 'priority_level', 'TEXT'), ('patients', 'final_diagnosis', 'TEXT'),
+        ('patients', 'final_recommendations', 'TEXT'), ('patients', 'assigned_doctor_id', 'INTEGER'),
+        ('patients', 'created_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
+    ]
+    
+    for table, col, dtype in cols_to_add:
+        try:
+            db_execute(conn, f'ALTER TABLE {table} ADD COLUMN {col} {dtype}')
+            conn.commit()
+        except: pass
+
+    conn.commit()
+    conn.close()
+
+# --- Step 2.5: Run Initialization (While still blocking-safe) ---
+try:
+    print(">>> Initializing Database...", flush=True)
+    init_db()
+    print(">>> Initialization Clean!", flush=True)
+except Exception as e:
+    print(f"DIAGNOSTIC ERROR IN INIT: {e}")
+    traceback.print_exc()
+
+# --- Step 3: Async/Socket Setup (AFTER database is ready) ---
 import eventlet
 eventlet.monkey_patch()
 
-import os
-import sqlite3
 import random
 import requests
 from datetime import datetime
@@ -12,9 +147,6 @@ from flask_cors import CORS
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import generate_password_hash, check_password_hash
 from backend.chatbot_logic import process_chatbot_query
-import psycopg2
-from psycopg2 import extras
-import traceback
 
 # PDF and Report Generation
 from reportlab.lib.pagesizes import letter
@@ -30,10 +162,6 @@ CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 
-DATABASE = 'database.db'
-DATABASE_URL = os.environ.get('DATABASE_URL')
-if DATABASE_URL and DATABASE_URL.startswith('postgres://'):
-    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
 UPLOAD_FOLDER = 'uploads'
 IMAGING_FOLDER = os.path.join(UPLOAD_FOLDER, 'imaging')
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar', 'csv', 'mp4', 'mov', 'avi', 'dcm', 'edf'}
@@ -43,7 +171,7 @@ app.config['IMAGING_FOLDER'] = IMAGING_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(IMAGING_FOLDER, exist_ok=True)
 
-FAST2SMS_API_KEY = 'CqjKpBhzOQWFb2H4mkYRouv08LxMfDtl16ZaGUTISA9ngXNrwy5TRbSlhIeWMPaAq3nfOpZygLX8Jzvi' # Replace with your actual API key
+FAST2SMS_API_KEY = 'CqjKpBhzOQWFb2H4mkYRouv08LxMfDtl16ZaGUTISA9ngXNrwy5TRbSlhIeWMPaAq3nfOpZygLX8Jzvi'
 SPECIALIST_ROLES = ['Neurologist', 'Cardiologist', 'Dermatologist', 'Oncologist', 'Nephrologist', 'Pulmonologist']
 
 def allowed_file(filename):
@@ -172,196 +300,11 @@ def find_best_specialist(specialist_type):
         conn.close()
         return spec['id'], spec['username'], True
     
-    # Fallback to any specialist if none online
     spec = conn.execute('SELECT id, username FROM users WHERE profession = ? LIMIT 1', (specialist_type,)).fetchone()
     conn.close()
     if spec:
         return spec['id'], spec['username'], False
     return None, None, False
-
-def get_db_connection():
-    if DATABASE_URL:
-        # Use PostgreSQL for Production
-        conn = psycopg2.connect(DATABASE_URL)
-        return conn
-    else:
-        # Use SQLite for Local
-        conn = sqlite3.connect(DATABASE)
-        conn.row_factory = sqlite3.Row
-        return conn
-
-def db_execute(conn, query, args=()):
-    """A wrapper to handle the difference between SQLite (?) and PostgreSQL (%s)"""
-    cursor = None
-    is_postgres = hasattr(conn, 'cursor_factory') or DATABASE_URL is not None
-    
-    if is_postgres:
-        query = query.replace('?', '%s')
-        cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
-        cursor.execute(query, args)
-    else:
-        cursor = conn.execute(query, args)
-    
-    return cursor
-
-def db_get_last_rowid(conn, cursor):
-    """Handles getting the last inserted ID across databases"""
-    is_postgres = hasattr(conn, 'cursor_factory') or DATABASE_URL is not None
-    if is_postgres:
-        # Note: For Postgres, we usually use RETURNING id. 
-        # This is a fallback but RETURNING id is better.
-        cursor.execute("SELECT LASTVAL()")
-        return cursor.fetchone()['lastval']
-    else:
-        return cursor.lastrowid
-
-def init_db():
-    conn = get_db_connection()
-    is_postgres = DATABASE_URL is not None
-    
-    # HEARTBEAT: Print database status for verification
-    if is_postgres:
-        print("\n" + "="*50)
-        print("[SYSTEM] Database Status: CONNECTED TO PERMANENT POSTGRESQL")
-        print("="*50 + "\n", flush=True)
-    else:
-        print("\n" + "!"*50)
-        print("[SYSTEM] Database Status: USING TEMPORARY LOCAL SQLITE")
-        print("!"*50 + "\n", flush=True)
-
-    # Use SERIAL for PostgreSQL, AUTOINCREMENT for SQLite
-    pk_style = "SERIAL PRIMARY KEY" if is_postgres else "INTEGER PRIMARY KEY AUTOINCREMENT"
-    
-    db_execute(conn, f'''
-        CREATE TABLE IF NOT EXISTS users (
-            id {pk_style},
-            username TEXT UNIQUE,
-            password TEXT,
-            profession TEXT,
-            mobile_number TEXT,
-            status TEXT DEFAULT 'Offline'
-        )
-    ''')
-    
-    # Migration: Add mobile_number if it doesn't exist
-    if not is_postgres:
-        try:
-            db_execute(conn, 'ALTER TABLE users ADD COLUMN mobile_number TEXT')
-        except:
-            pass # Already exists
-    
-    db_execute(conn, f'''
-        CREATE TABLE IF NOT EXISTS patients (
-            id {pk_style},
-            patient_name TEXT,
-            patient_mobile TEXT,
-            patient_user_id INTEGER,
-            age INTEGER,
-            gender TEXT,
-            blood_pressure TEXT,
-            heart_rate TEXT,
-            oxygen_level TEXT,
-            problem_description TEXT,
-            report_file TEXT,
-            priority TEXT DEFAULT 'Normal',
-            priority_level TEXT DEFAULT 'Normal',
-            risk_level TEXT DEFAULT 'Low',
-            predicted_condition TEXT DEFAULT 'General Consultation',
-            ai_prediction TEXT,
-            scan_analysis_report TEXT,
-            consciousness_level TEXT,
-            speech_condition TEXT,
-            motor_function TEXT,
-            headache_severity TEXT,
-            seizure_history TEXT,
-            tumor_details TEXT,
-            cancer_history TEXT,
-            kidney_function TEXT,
-            urine_reports TEXT,
-            skin_condition TEXT,
-            rash_description TEXT,
-            breathing_condition TEXT,
-            final_diagnosis TEXT,
-            final_recommendations TEXT,
-            assigned_doctor_id INTEGER,
-            rural_doctor_id INTEGER,
-            specialist_id INTEGER,
-            specialist_type TEXT DEFAULT 'Neurologist',
-            status TEXT DEFAULT 'Pending',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    db_execute(conn, f'''
-        CREATE TABLE IF NOT EXISTS messages (
-            id {pk_style},
-            patient_id INTEGER,
-            sender_id INTEGER,
-            message TEXT,
-            file_path TEXT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    db_execute(conn, f'''
-        CREATE TABLE IF NOT EXISTS notifications (
-            id {pk_style},
-            user_id INTEGER,
-            patient_id INTEGER,
-            message TEXT,
-            link TEXT,
-            read_status BOOLEAN DEFAULT FALSE,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    db_execute(conn, f'''
-        CREATE TABLE IF NOT EXISTS medical_images (
-            id {pk_style},
-            patient_id INTEGER,
-            file_path TEXT,
-            modality TEXT,
-            sequence_type TEXT,
-            uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-
-    # Comprehensive Migration List
-    cols_to_add = [
-        ('patients', 'patient_user_id', 'INTEGER'),
-        ('patients', 'risk_level', "TEXT DEFAULT 'Low'"),
-        ('patients', 'predicted_condition', "TEXT DEFAULT 'General Consultation'"),
-        ('patients', 'ai_prediction', 'TEXT'),
-        ('patients', 'scan_analysis_report', 'TEXT'),
-        ('patients', 'consciousness_level', 'TEXT'),
-        ('patients', 'speech_condition', 'TEXT'),
-        ('patients', 'motor_function', 'TEXT'),
-        ('patients', 'headache_severity', 'TEXT'),
-        ('patients', 'seizure_history', 'TEXT'),
-        ('patients', 'tumor_details', 'TEXT'),
-        ('patients', 'cancer_history', 'TEXT'),
-        ('patients', 'kidney_function', 'TEXT'),
-        ('patients', 'urine_reports', 'TEXT'),
-        ('patients', 'skin_condition', 'TEXT'),
-        ('patients', 'rash_description', 'TEXT'),
-        ('patients', 'breathing_condition', 'TEXT'),
-        ('patients', 'priority_level', 'TEXT'),
-        ('patients', 'final_diagnosis', 'TEXT'),
-        ('patients', 'final_recommendations', 'TEXT'),
-        ('patients', 'assigned_doctor_id', 'INTEGER'),
-        ('patients', 'created_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
-    ]
-    
-    for table, col, dtype in cols_to_add:
-        try:
-            db_execute(conn, f'ALTER TABLE {table} ADD COLUMN {col} {dtype}')
-            conn.commit()
-        except:
-            pass # Column already exists
-
-    conn.commit()
-    conn.commit()
-    conn.close()
 
 def create_notification(user_id, message, link="#", patient_id=None, conn=None):
     close_conn = False

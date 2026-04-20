@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Patients - easyMed</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+</head>
+<body>
+    <div class="hospital-pattern"></div>
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <i class="fa-solid fa-house-medical"></i>
+            <h3>easyMed</h3>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a href="{{ url_for('rural_dashboard' if session['profession'] == 'Rural Doctor' else 'specialist_dashboard') }}" class="nav-link">
+                    <i class="fa-solid fa-house-medical"></i> Dashboard
+                </a>
+            </li>
+            {% if session['profession'] == 'Rural Doctor' %}
+            <li class="nav-item">
+                <a href="{{ url_for('rural_dashboard') }}#add-patient-section" class="nav-link">
+                    <i class="fa-solid fa-user-plus"></i> Add Patient
+                </a>
+            </li>
+            {% else %}
+            <li class="nav-item">
+                <a href="{{ url_for('pending_requests') }}" class="nav-link">
+                    <i class="fa-solid fa-clipboard-list"></i> New Requests
+                </a>
+            </li>
+            {% endif %}
+            <li class="nav-item">
+                <a href="{{ url_for('my_patients') }}" class="nav-link active">
+                    <i class="fa-solid {{ 'fa-user-doctor' if session['profession'] in SPECIALIST_ROLES else 'fa-users' }}"></i> 
+                    {{ 'My Cases' if session['profession'] in SPECIALIST_ROLES else 'My Patients' }}
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('active_chats') }}" class="nav-link">
+                    <i class="fa-solid fa-comments"></i> Chat
+                </a>
+            </li>
+            {% if session['profession'] == 'Rural Doctor' %}
+            <li class="nav-item">
+                <a href="{{ url_for('reports_view') }}" class="nav-link">
+                    <i class="fa-solid fa-file-medical"></i> Reports
+                </a>
+            </li>
+            {% endif %}
+            <li class="nav-item">
+                <a href="{{ url_for('case_history') }}" class="nav-link">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Case History
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('analytics_dashboard') }}" class="nav-link">
+                    <i class="fa-solid fa-chart-line"></i> Analytics
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('ai_assistant') }}" class="nav-link">
+                    <i class="fa-solid fa-robot"></i> AI Assistant
+                </a>
+            </li>
+        </ul>
+        <div class="sidebar-footer">
+            <a href="{{ url_for('logout') }}" class="logout-link">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-wrapper">
+        <header class="top-header">
+            <div class="d-flex align-items-center gap-3">
+                <h4 class="m-0 fw-bold text-white">My Patients</h4>
+            </div>
+            <div class="header-user-info">
+                <span class="user-badge text-white"><i class="fa-solid fa-user-doctor me-2"></i>{{ session['username'] }}</span>
+            </div>
+        </header>
+
+        <div class="content-area">
+            <div class="d-flex justify-content-between align-items-end mb-4 border-bottom pb-3">
+                <div>
+                    <h2 class="text-dark fw-bold m-0"><i class="fa-solid fa-hospital-user text-primary me-3"></i>Patient Records</h2>
+                    <p class="text-muted m-0 small mt-1">Showing all cases for the {{ session['profession'] }} department</p>
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-10 px-3 py-2 rounded-pill">
+                        {{ patients|length }} Total Cases
+                    </span>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                {% for patient in patients %}
+                <div class="col-xl-4 col-md-6">
+                    <div class="card medical-card h-100 border-0 shadow-sm overflow-hidden">
+                        <div class="card-body p-4 d-flex flex-column">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div class="avatar-circle">
+                                    {{ patient['patient_name'][0]|upper }}
+                                </div>
+                                <div class="d-flex flex-column align-items-end gap-1">
+                                    {# Case Lifecycle Status Badge #}
+                                    {% if patient['status'] == 'Pending' %}
+                                    <span class="badge bg-warning text-dark px-3 py-2 rounded-pill shadow-sm mb-1 w-100 text-uppercase" style="font-size: 0.6rem;"><i class="fa-solid fa-clock me-1"></i> PENDING</span>
+                                    {% elif patient['status'] in ['Accepted', 'Reviewed'] %}
+                                    <span class="badge bg-info px-3 py-2 rounded-pill shadow-sm mb-1 w-100 text-uppercase" style="font-size: 0.6rem;"><i class="fa-solid fa-check me-1"></i> {{ patient['status'].upper() }}</span>
+                                    {% elif patient['status'] == 'In Consultation' %}
+                                    <span class="badge bg-primary px-3 py-2 rounded-pill shadow-sm mb-1 w-100 text-uppercase pulse-status" style="font-size: 0.6rem;"><i class="fa-solid fa-comments me-1"></i> CONSULTING</span>
+                                    {% elif patient['status'] == 'Completed' %}
+                                    <span class="badge bg-success px-3 py-2 rounded-pill shadow-sm mb-1 w-100 text-uppercase" style="font-size: 0.6rem;"><i class="fa-solid fa-file-medical me-1"></i> COMPLETED</span>
+                                    {% endif %}
+
+                                    {% if patient['priority'] == 'Emergency' %}
+                                    <span class="badge bg-danger pulse-emergency px-3 py-2 rounded-pill shadow-sm w-100" style="font-size: 0.6rem;">HIGH PRIORITY</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary px-3 py-2 rounded-pill shadow-sm w-100" style="font-size: 0.6rem;">NORMAL</span>
+                                    {% endif %}
+                                    
+                                    {# AI Risk Level Badge #}
+                                    {% if patient['risk_level'] == 'High' %}
+                                    <span class="badge bg-danger px-3 py-1 rounded-pill small shadow-sm" style="font-size: 0.7rem;"><i class="fa-solid fa-triangle-exclamation me-1"></i> HIGH RISK</span>
+                                    {% elif patient['risk_level'] == 'Medium' %}
+                                    <span class="badge bg-warning text-dark px-3 py-1 rounded-pill small shadow-sm" style="font-size: 0.7rem;"><i class="fa-solid fa-circle-exclamation me-1"></i> MEDIUM RISK</span>
+                                    {% else %}
+                                    <span class="badge bg-success px-3 py-1 rounded-pill small shadow-sm" style="font-size: 0.7rem;"><i class="fa-solid fa-check-circle me-1"></i> LOW RISK</span>
+                                    {% endif %}
+                                    {% if session['profession'] in SPECIALIST_ROLES %}
+                                    <span class="badge bg-info bg-opacity-10 text-info small border-info border" style="font-size: 0.65rem;">
+                                        <i class="fa-solid fa-user-check me-1"></i>ASSIGNED TO YOU
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <h5 class="fw-bold text-dark m-0">{{ patient['patient_name'] }}</h5>
+                                <div class="d-flex align-items-center gap-2 mt-1">
+                                    <span class="badge tag-{{ patient['specialist_type'].lower() }} fw-bold small"><i class="fa-solid fa-stethoscope me-1"></i>{{ patient['specialist_type'] }}</span>
+                                    <span class="text-muted small border-start ps-2">Age: {{ patient['age'] }}</span>
+                                </div>
+                            </div>
+
+                            {# AI Disease Prediction #}
+                            <div class="mb-3 p-2 bg-primary bg-opacity-10 border border-primary border-opacity-10 rounded-3">
+                                <span class="badge bg-primary px-2 py-1 mb-1" style="font-size: 0.6rem;"><i class="fa-solid fa-robot me-1"></i> AI PREDICTION</span>
+                                <div class="text-dark fw-bold small ps-1">{{ patient['predicted_condition'] }}</div>
+                            </div>
+
+                            <div class="p-3 bg-light rounded-3 mb-3 border-start border-primary border-3 flex-grow-1">
+                                <p class="text-dark small mb-0 fw-bold opacity-75">Presenting Problem:</p>
+                                <p class="text-muted small mb-0 mt-1 line-clamp-3">
+                                    {{ patient['problem_description'] }}
+                                </p>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="small">
+                                    <span class="text-muted d-block small">Status</span>
+                                    <span class="fw-bold text-active">{{ patient['status'] }}</span>
+                                </div>
+                                {% if patient['rural_doctor_name'] %}
+                                <div class="small text-end">
+                                    <span class="text-muted d-block small">From Doctor</span>
+                                    <span class="fw-bold text-dark d-flex align-items-center justify-content-end gap-2">
+                                        Dr. {{ patient['rural_doctor_name'] }}
+                                        <span class="status-dot {{ 'status-online' if patient['doctor_status'] == 'Online' else 'status-offline' }}" title="{{ patient['doctor_status'] }}"></span>
+                                    </span>
+                                </div>
+                                {% elif patient['specialist_name'] %}
+                                <div class="small text-end">
+                                    <span class="text-muted d-block small">Specialist</span>
+                                    <span class="fw-bold text-dark d-flex align-items-center justify-content-end gap-2">
+                                        Dr. {{ patient['specialist_name'] }}
+                                        <span class="status-dot {{ 'status-online' if patient['specialist_status'] == 'Online' else 'status-offline' }}" title="{{ patient['specialist_status'] }}"></span>
+                                    </span>
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="mt-auto pt-3 border-top d-flex flex-column gap-2">
+                                {% if patient['status'] == 'Completed' and (patient['report_file'] or patient['report_file_path']) %}
+                                <a href="{{ url_for('uploaded_file', filename=patient['report_file'] or patient['report_file_path']) }}" class="btn btn-outline-success shadow-sm w-100" target="_blank">
+                                    <i class="fa-solid fa-file-pdf me-2"></i>Download Final Medical Report
+                                </a>
+                                {% endif %}
+                                <div class="d-flex gap-2">
+                                    <a href="{{ url_for('chat', patient_id=patient['id']) }}" class="btn btn-medical flex-grow-1 shadow-sm">
+                                        <i class="fa-solid fa-comments-medical me-2"></i>{{ 'Enter Consultation' if session['profession'] in SPECIALIST_ROLES else 'View Case Summary' }}
+                                    </a>
+                                    {% if patient['report_file'] %}
+                                    <button type="button" class="btn btn-outline-primary medical-img-preview-btn px-3" data-src="{{ url_for('uploaded_file', filename=patient['report_file']) }}" title="View Reports">
+                                        <i class="fa-solid fa-file-waveform"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="col-12 text-center py-5">
+                    <div class="card medical-card py-5 border-0 bg-white">
+                        <div class="card-body">
+                            <i class="fa-solid fa-users fa-4x text-muted opacity-20 mb-3"></i>
+                            <h4 class="text-muted">No patient cases found.</h4>
+                            <p class="text-muted">Once patients are assigned or added, they will appear here.</p>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% include 'diagnostic_viewer.html' %}
+    {% include 'chatbot.html' %}
+</body>
+</html>

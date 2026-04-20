@@ -1,0 +1,631 @@
+/* static/dashboard.css */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+html {
+    scroll-behavior: smooth;
+}
+
+:root {
+    --primary-color: #1e88e5; /* Medical Blue */
+    --primary-hover: #1565c0;
+    --secondary-color: #e3f2fd; /* Light Cyan */
+    --accent-color: #4caf50; /* Green */
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --text-dark: #1e293b;
+    --text-light: #f8fafc;
+    --text-muted: #64748b;
+    --bg-light: #f8fafc;
+    --card-bg: #ffffff;
+    --sidebar-bg: #ffffff;
+    --header-bg: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+    --border-color: #f1f5f9;
+    --sidebar-width: 250px;
+    --header-height: 70px;
+    --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    --hover-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    --transition-speed: 0.3s;
+}
+
+.dark-mode {
+    --bg-light: #0f172a;
+    --card-bg: #1e293b;
+    --sidebar-bg: #1e293b;
+    --text-dark: #f8fafc;
+    --text-muted: #94a3b8;
+    --border-color: #334155;
+    --secondary-color: #1e293b;
+    --header-bg: linear-gradient(135deg, #0f172a, #1e293b);
+}
+
+/* Animations */
+@keyframes pulse-status {
+    0% { transform: scale(0.98); opacity: 0.8; }
+    50% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(0.98); opacity: 0.8; }
+}
+
+.pulse-status {
+    animation: pulse-status 3s ease-in-out infinite; /* Slower, simpler animation */
+    display: inline-block;
+}
+
+html {
+    scroll-behavior: smooth;
+    scroll-padding-top: var(--header-height);
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-light);
+    color: var(--text-dark);
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    transition: background-color var(--transition-speed), color var(--transition-speed);
+    display: block !important; /* Force block layout override */
+    justify-content: flex-start !important;
+    align-items: stretch !important;
+}
+
+/* Global width overrides to prevent "punctured in the center" look */
+.container, .container-fluid {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+}
+
+/* Base Hospital Pattern Background */
+.hospital-pattern {
+    background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+    background-size: 20px 20px;
+    opacity: 0.5;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: -1;
+}
+
+/* =========================================
+   SIDEBAR NAV
+========================================= */
+.sidebar {
+    width: var(--sidebar-width);
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    background: var(--sidebar-bg);
+    box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    padding-top: 20px;
+    transition: background var(--transition-speed);
+}
+
+.sidebar-header {
+    padding: 0 20px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 20px;
+}
+
+.sidebar-header i {
+    font-size: 28px;
+    color: var(--primary-color);
+}
+
+.sidebar-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.nav-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    flex: 1;
+}
+
+.nav-item {
+    margin-bottom: 5px;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px 24px;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border-left: 4px solid transparent;
+}
+
+.nav-link:hover {
+    background-color: var(--secondary-color);
+    color: var(--primary-color);
+}
+
+.nav-link.active {
+    background-color: var(--secondary-color);
+    color: var(--primary-color);
+    border-left-color: var(--primary-color);
+    font-weight: 600;
+}
+
+.nav-link i {
+    font-size: 1.1rem;
+    width: 20px;
+    text-align: center;
+}
+
+.sidebar-footer {
+    padding: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.logout-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--danger-color);
+    text-decoration: none;
+    font-weight: 600;
+    padding: 10px;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+
+.logout-link:hover {
+    background: #fef2f2;
+}
+
+/* =========================================
+   HEADER BAR
+========================================= */
+.main-wrapper {
+    margin-left: var(--sidebar-width);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    width: calc(100% - var(--sidebar-width));
+}
+
+.top-header {
+    height: var(--header-height);
+    background: var(--header-bg);
+    padding: 0 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    position: sticky;
+    top: 0;
+    z-index: 900;
+    transition: background var(--transition-speed);
+}
+
+/* Animated ECG Line in Header Background */
+.header-ecg {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 20' preserveAspectRatio='none'%3E%3Cpath d='M0,10 L20,10 L25,5 L30,15 L35,2 L40,18 L45,10 L100,10' fill='none' stroke='rgba(255,255,255,0.15)' stroke-width='1' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
+    background-size: 200px 100%;
+    background-repeat: repeat-x;
+    animation: slideEcg 4s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes slideEcg {
+    0% { background-position: 0 0; }
+    100% { background-position: -200px 0; }
+}
+
+/* Optimize out background-position animation on mobile to reduce Logcat noise */
+@media (max-width: 992px) {
+    .header-ecg {
+        animation: none; /* Disable background-position sliding on mobile */
+        opacity: 0.1;
+    }
+    
+    .pulse-status {
+        animation: none; /* Disable pulse animation on mobile */
+    }
+}
+
+.header-user-info {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    position: relative;
+    z-index: 1;
+}
+
+.user-badge {
+    background: rgba(255,255,255,0.2);
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.notification-bell, .theme-toggle-btn {
+    position: relative;
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 5px;
+    color: white;
+    transition: transform 0.2s;
+    background: none;
+    border: none;
+    outline: none;
+}
+
+.theme-toggle-btn:hover {
+    transform: scale(1.1) rotate(15deg);
+}
+
+/* Dropdown Panel */
+.notifications-panel {
+    position: absolute;
+    top: 45px;
+    right: 0;
+    width: 320px;
+    background: var(--card-bg);
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.2s ease, background var(--transition-speed);
+    z-index: 1000;
+    color: var(--text-dark);
+}
+
+.notifications-panel.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.notifications-panel::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    right: 15px;
+    width: 12px;
+    height: 12px;
+    background: var(--card-bg);
+    transform: rotate(45deg);
+    border-left: 1px solid rgba(0,0,0,0.05);
+    border-top: 1px solid rgba(0,0,0,0.05);
+}
+
+.panel-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.panel-body {
+    max-height: 350px;
+    overflow-y: auto;
+}
+
+.notif-item {
+    display: flex;
+    gap: 15px;
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border-color);
+    text-decoration: none;
+    transition: background 0.2s;
+}
+
+.notif-item:hover {
+    background: var(--bg-light);
+}
+
+.notif-item.unread {
+    background: #f0f9ff;
+    position: relative;
+}
+
+.notif-item.unread::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--primary-color);
+}
+
+.notif-icon {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    background: var(--secondary-color);
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.notif-content {
+    flex-grow: 1;
+}
+
+.notif-content p {
+    line-height: 1.4;
+    margin-bottom: 4px;
+}
+
+/* =========================================
+   PAGE CONTENT
+========================================= */
+.content-area {
+    padding: 30px;
+    flex: 1;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+}
+
+.page-title {
+    color: var(--text-dark);
+    font-weight: 700;
+    margin-bottom: 25px;
+    font-size: 1.75rem;
+}
+
+/* Status Badges */
+.status-badge {
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge-pending {
+    background-color: #fef3c7;
+    color: #d97706;
+}
+
+.badge-accepted {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+}
+
+.badge-reviewed {
+    background-color: #dcfce7;
+    color: #15803d;
+}
+
+/* Generic Card Styles Override */
+.medical-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    border: none;
+    box-shadow: var(--card-shadow);
+    transition: transform 0.2s, box-shadow 0.2s, background var(--transition-speed);
+    height: 100%;
+}
+
+.medical-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--hover-shadow);
+}
+
+.medical-card {
+    cursor: pointer;
+}
+
+.stat-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+/* Action Buttons */
+.btn-medical {
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: 600;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.btn-medical:hover {
+    background-color: var(--primary-hover);
+    color: white;
+}
+
+.btn-success-medical:hover {
+    background-color: #43a047;
+    color: white;
+}
+
+/* Status Indicators */
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    border: 1.5px solid rgba(255,255,255,0.3);
+}
+
+.status-online {
+    background-color: #4caf50;
+    box-shadow: 0 0 8px rgba(76, 175, 80, 0.5);
+}
+
+.status-offline {
+    background-color: #94a3b8;
+}
+
+.scale-75 { transform: scale(0.75); }
+
+/* Emergency Pulse Animation */
+.pulse-emergency {
+    background-color: var(--danger-color);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    animation: pulse-red 1.5s infinite;
+}
+
+@keyframes pulse-red {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    }
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+    }
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    }
+}
+
+/* Utility for line clamping */
+/* Specialty Tag Colors */
+.tag-neurologist { background-color: rgba(30, 136, 229, 0.1) !important; color: #1e88e5 !important; border: 1px solid rgba(30, 136, 229, 0.2) !important; }
+.tag-cardiologist { background-color: rgba(239, 68, 68, 0.1) !important; color: #ef4444 !important; border: 1px solid rgba(239, 68, 68, 0.2) !important; }
+.tag-dermatologist { background-color: rgba(16, 185, 129, 0.1) !important; color: #10b981 !important; border: 1px solid rgba(16, 185, 129, 0.2) !important; }
+.tag-oncologist { background-color: rgba(139, 92, 246, 0.1) !important; color: #8b5cf6 !important; border: 1px solid rgba(139, 92, 246, 0.2) !important; }
+.tag-nephrologist { background-color: rgba(245, 158, 11, 0.1) !important; color: #f59e0b !important; border: 1px solid rgba(245, 158, 11, 0.2) !important; }
+.tag-pulmonologist { background-color: rgba(6, 182, 212, 0.1) !important; color: #06b6d4 !important; border: 1px solid rgba(6, 182, 212, 0.2) !important; }
+
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+/* =========================================
+   MOBILE RESPONSIVENESS
+   ========================================= */
+
+@media (max-width: 992px) {
+    :root {
+        --sidebar-width: 0px; /* Hide sidebar by default */
+    }
+
+    .sidebar {
+        left: -280px; /* Fully hide sidebar */
+        width: 280px;
+        transition: left 0.3s ease;
+        box-shadow: 5px 0 15px rgba(0,0,0,0.1);
+    }
+
+    .sidebar.active {
+        left: 0;
+    }
+
+    .main-wrapper {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .top-header {
+        padding: 0 10px;
+        height: auto;
+        min-height: var(--header-height);
+        flex-wrap: nowrap;
+    }
+
+    .top-header h4 {
+        font-size: 1rem !important;
+        white-space: normal;
+        line-height: 1.2;
+        max-width: 120px;
+    }
+
+    .header-user-info {
+        gap: 10px;
+    }
+
+    .header-user-info span.user-badge {
+        display: none; /* Hide user badge on very small mobile to save space */
+    }
+
+    .header-user-info .btn-sm {
+        padding: 4px 8px;
+        font-size: 0.75rem;
+    }
+
+    /* Hide Analytics text on mobile, keep icon only */
+    .menu-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: white;
+        background: rgba(255,255,255,0.2);
+        border: none;
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        cursor: pointer;
+        z-index: 1001;
+    }
+
+    .content-area {
+        padding: 15px;
+    }
+
+    .page-title {
+        font-size: 1.4rem;
+    }
+
+    /* Overlay for when sidebar is open */
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 999;
+    }
+
+    .sidebar-overlay.active {
+        display: block;
+    }
+}
+
+@media (min-width: 993px) {
+    .menu-toggle {
+        display: none;
+    }
+}

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Case History - easyMed</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+    <style>
+        .filter-section {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .history-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .history-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        .priority-badge { font-size: 0.75rem; letter-spacing: 0.5px; }
+        .case-status-badge { font-weight: 600; font-size: 0.8rem; }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <i class="fa-solid fa-house-medical"></i>
+            <h3>easyMed</h3>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a href="{{ url_for('rural_dashboard' if session['profession'] == 'Rural Doctor' else 'specialist_dashboard') }}" class="nav-link">
+                    <i class="fa-solid fa-house-medical"></i> Dashboard
+                </a>
+            </li>
+            {% if session['profession'] == 'Rural Doctor' %}
+            <li class="nav-item">
+                <a href="{{ url_for('rural_dashboard') }}#add-patient-section" class="nav-link">
+                    <i class="fa-solid fa-user-plus"></i> Add Patient
+                </a>
+            </li>
+            {% else %}
+            <li class="nav-item">
+                <a href="{{ url_for('pending_requests') }}" class="nav-link">
+                    <i class="fa-solid fa-clipboard-list"></i> New Requests
+                </a>
+            </li>
+            {% endif %}
+            <li class="nav-item">
+                <a href="{{ url_for('my_patients') }}" class="nav-link">
+                    <i class="fa-solid {{ 'fa-user-doctor' if session['profession'] in SPECIALIST_ROLES else 'fa-users' }}"></i> 
+                    {{ 'My Cases' if session['profession'] in SPECIALIST_ROLES else 'My Patients' }}
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('active_chats') }}" class="nav-link">
+                    <i class="fa-solid fa-comments"></i> Chat
+                </a>
+            </li>
+            {% if session['profession'] == 'Rural Doctor' %}
+            <li class="nav-item">
+                <a href="{{ url_for('reports_view') }}" class="nav-link">
+                    <i class="fa-solid fa-file-medical"></i> Reports
+                </a>
+            </li>
+            {% endif %}
+            <li class="nav-item">
+                <a href="{{ url_for('case_history') }}" class="nav-link active">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Case History
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('ai_assistant') }}" class="nav-link">
+                    <i class="fa-solid fa-robot"></i> AI Assistant
+                </a>
+            </li>
+        </ul>
+        <div class="sidebar-footer">
+            <a href="{{ url_for('logout') }}" class="logout-link">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-wrapper">
+        <header class="top-header">
+            <div class="header-ecg"></div>
+            <div class="d-flex align-items-center gap-3">
+                <h4 class="m-0 fw-bold">easyMed Case Archives</h4>
+            </div>
+            <div class="header-user-info">
+                 <span class="user-badge">
+                    <i class="fa-solid {{ 'fa-user-doctor' if session['profession'] == 'Rural Doctor' else 'fa-stethoscope' }} me-2"></i>
+                    Dr. {{ session['username'] }}
+                </span>
+            </div>
+        </header>
+
+        <div class="content-area">
+            <div class="d-flex justify-content-between align-items-center mb-4 pt-3 border-bottom pb-3">
+                <div>
+                    <h2 class="page-title m-0 text-dark fw-bold"><i class="fa-solid fa-clock-rotate-left text-primary me-3"></i>Case History</h2>
+                    <p class="text-muted m-0 small mt-1">Full archive of reviewed and closed cases</p>
+                </div>
+            </div>
+
+            <!-- FILTERS -->
+            <div class="filter-section shadow-sm border-0 mb-4 bg-white p-4 rounded-4">
+                <form action="{{ url_for('case_history') }}" method="GET" class="row g-3 align-items-center">
+                    <div class="col-md-5">
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-0"><i class="fa-solid fa-search text-muted"></i></span>
+                            <input type="text" name="search" class="form-control border-0 bg-light" placeholder="Search patient name..." value="{{ request.args.get('search', '') }}">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select name="status" class="form-select border-0 bg-light">
+                            <option value="">All Statuses</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Accepted">Accepted</option>
+                            <option value="Reviewed">Reviewed</option>
+                            <option value="Completed">Completed</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-medical w-100 shadow-sm">
+                            <i class="fa-solid fa-filter me-2"></i>Filter Archives
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- HISTORY LIST -->
+            <div class="row g-4">
+                {% for patient in patients %}
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <div class="card medical-card h-100 history-card border-0 shadow-sm overflow-hidden">
+                        <div class="card-body p-4 d-flex flex-column">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div class="avatar-circle">
+                                    {{ patient['patient_name'][0]|upper }}
+                                </div>
+                                <div class="d-flex flex-column align-items-end gap-1">
+                                    <span class="badge {{ 'bg-success' if patient['status'] in ['Reviewed', 'Completed'] else 'bg-warning' }} text-dark rounded-pill px-3 py-2">
+                                        {{ patient['status'] }}
+                                    </span>
+                                    {% if patient['priority'] == 'Emergency' %}
+                                    <span class="badge bg-danger pulse-emergency px-2 py-1 rounded" style="font-size: 0.65rem;">HIGH PRIORITY</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <h5 class="fw-bold text-dark m-0">{{ patient['patient_name'] }}</h5>
+                                <div class="d-flex align-items-center gap-2 mt-1">
+                                    <span class="badge tag-{{ patient['specialist_type'].lower() }} fw-bold small"><i class="fa-solid fa-user-tag me-1"></i>{{ patient['specialist_type'] or session['profession'] }}</span>
+                                    <span class="text-muted small border-start ps-2">Age: {{ patient['age'] }}</span>
+                                </div>
+                            </div>
+
+                            <p class="text-muted small mb-3 line-clamp-2">{{ patient['problem_description'] }}</p>
+
+                            <div class="d-flex justify-content-between align-items-center mt-auto pt-3 border-top">
+                                <div class="priority-indicator">
+                                    <span class="small text-muted d-block">Priority</span>
+                                    <span class="fw-bold {{ 'text-danger' if patient['priority'] == 'Emergency' else 'text-primary' }} small">{{ 'HIGH' if patient['priority'] == 'Emergency' else 'NORMAL' }}</span>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    {% if patient['report_file'] or patient['report_file_path'] %}
+                                    <button type="button" class="btn btn-sm btn-outline-success medical-img-preview-btn px-3" data-src="{{ url_for('uploaded_file', filename=patient['report_file'] or patient['report_file_path']) }}">
+                                        <i class="fa-solid fa-file-circle-check"></i>
+                                    </button>
+                                    {% endif %}
+                                    <a href="{{ url_for('chat', patient_id=patient['id']) }}" class="btn btn-sm btn-light border small text-primary fw-bold">View Details <i class="fa-solid fa-arrow-up-right-from-square ms-1"></i></a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="col-12 text-center py-5">
+                    <div class="card medical-card py-5 border-0 bg-white shadow-sm">
+                        <div class="card-body">
+                            <i class="fa-solid fa-folder-open fa-4x text-muted opacity-20 mb-3"></i>
+                            <h4 class="text-muted">No case history available.</h4>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% include 'diagnostic_viewer.html' %}
+    {% include 'chatbot.html' %}
+</body>
+</html>

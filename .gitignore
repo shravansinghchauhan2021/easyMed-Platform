@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+.env
+*.db
+!medical_platform.db  # Keep the main DB schema if empty/test data, or remove this line to exclude all DBs
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.bak
+
+# Android
+.gradle/
+build/
+captures/
+*.apk
+*.aab
+local.properties
+.cxx/
+*.keystore
+!debug.keystore
+
+# System
+.DS_Store
+Thumbs.db
+
+# Uploads & Data
+uploads/
+*.db
+!medical_platform.db
+
+# Gemini / Brain
+.gemini/
+brain/

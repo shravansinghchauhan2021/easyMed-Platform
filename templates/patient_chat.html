@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Consultation - easyMed</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Custom Dashboard CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+    
+    <!-- Socket.IO Client -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='notifications.js') }}"></script>
+    
+    <style>
+        .chat-wrapper {
+            display: flex;
+            gap: 0;
+            height: calc(100vh - 70px); /* Height minus header only */
+            background: var(--bg-light);
+        }
+        
+        .patient-details-panel {
+            width: 350px;
+            background: white;
+            border-right: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            color: var(--text-dark);
+        }
+
+        .chat-main-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: white;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            background: #f8fafc;
+        }
+
+        .message-bubble {
+            padding: 10px 18px;
+            border-radius: 15px;
+            font-size: 1rem;
+            line-height: 1.5;
+            position: relative;
+            max-width: 90%;
+            min-width: 120px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            word-break: break-word;
+            text-align: left; /* Always left-align text inside bubbles */
+        }
+
+        .message-mine {
+            align-self: flex-end;
+            align-items: flex-end;
+            /* Remove text-align: right here so child bubbles use their own align */
+        }
+
+        .message-other {
+            align-self: flex-start;
+            align-items: flex-start;
+        }
+
+        .bubble-rural {
+            background-color: #e1ffc7; /* WhatsApp Light Green */
+            color: #303030;
+        }
+
+        .bubble-specialist {
+            background-color: #ffffff;
+            color: #303030;
+            border: 1px solid #e2e8f0;
+        }
+
+        /* Bubble Shapes */
+        .message-mine .message-bubble { 
+            border-top-right-radius: 2px; 
+            border-top-left-radius: 12px;
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+        }
+        .message-other .message-bubble { 
+            border-top-left-radius: 2px; 
+            border-top-right-radius: 12px;
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+        }
+
+        .chat-input-area {
+            padding: 15px 25px;
+            background: #f0f2f5;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .chat-input {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            color: var(--text-dark);
+            border-radius: 25px;
+            padding: 12px 20px;
+        }
+
+        .chat-input:focus {
+            background: white;
+            border-color: var(--primary-color);
+            color: var(--text-dark);
+            box-shadow: none;
+        }
+
+        .message-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+            font-weight: 600;
+        }
+
+        .timeline-container { padding-left: 20px; }
+        .timeline-item {
+            position: relative;
+            padding-left: 30px;
+            padding-bottom: 25px;
+            border-left: 2px solid #e2e8f0;
+        }
+        .timeline-marker {
+            position: absolute;
+            left: -7px;
+            top: 0;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #cbd5e1;
+        }
+        .timeline-item.completed { border-left-color: var(--primary-color); }
+        .timeline-item.completed .timeline-marker { background: var(--primary-color); }
+        
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Mobile Adjustments */
+        @media (max-width: 992px) {
+            .chat-wrapper {
+                flex-direction: column;
+                height: auto; /* Allow scrolling the whole page if needed */
+                min-height: calc(100vh - 70px);
+            }
+
+            .patient-details-panel {
+                width: 100%;
+                height: auto;
+                max-height: 50vh; /* Limit height so chat is visible */
+                border-right: none;
+                border-bottom: 1px solid #e2e8f0;
+            }
+
+            .chat-main-panel {
+                height: 60vh; /* Default height when details are visible */
+                flex: none;
+                transition: height 0.3s ease;
+            }
+
+            .chat-wrapper.details-hidden .chat-main-panel {
+                height: calc(100vh - 70px); /* Full screen minus header */
+            }
+
+            .chat-messages {
+                padding: 15px;
+                gap: 15px;
+            }
+
+            .message-bubble {
+                max-width: 85%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="hospital-pattern"></div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <i class="fa-solid fa-house-medical"></i>
+            <h3>easyMed</h3>
+        </div>
+        <ul class="nav-menu">
+            {% if session['profession'] == 'Rural Doctor' %}
+                <li class="nav-item"><a href="{{ url_for('rural_dashboard') }}" class="nav-link"><i class="fa-solid fa-house-medical"></i> Dashboard</a></li>
+                <li class="nav-item"><a href="#" class="nav-link"><i class="fa-solid fa-user-plus"></i> Add Patient</a></li>
+            {% else %}
+                <li class="nav-item"><a href="{{ url_for('specialist_dashboard') }}" class="nav-link"><i class="fa-solid fa-house-medical"></i> Dashboard</a></li>
+                <li class="nav-item"><a href="#" class="nav-link"><i class="fa-solid fa-clipboard-list"></i> New Requests</a></li>
+            {% endif %}
+            <li class="nav-item"><a href="#" class="nav-link active"><i class="fa-solid fa-comments"></i> Consultations</a></li>
+            <li class="nav-item">
+                <a href="javascript:void(0)" onclick="openAIChatbot()" class="nav-link">
+                    <i class="fa-solid fa-robot"></i> AI Assistant
+                </a>
+            </li>
+        </ul>
+        <div class="sidebar-footer">
+            <a href="{{ url_for('logout') }}" class="logout-link"><i class="fa-solid fa-arrow-right-from-bracket"></i> Logout</a>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT WRAPPER -->
+    <div class="main-wrapper">
+        <!-- TOP HEADER -->
+        <header class="top-header">
+            <div class="header-ecg"></div>
+            <div class="d-flex align-items-center gap-4 position-relative z-1">
+                <h4 class="m-0 fw-bold">Live Consultation</h4>
+            </div>
+            <div class="header-user-info">
+                <span class="user-badge">
+                    <span class="status-dot status-online" id="status-{{ session['user_id'] }}"></span>
+                     <i class="fa-solid {{ 'fa-user-doctor' if session['profession'] == 'Rural Doctor' else 'fa-stethoscope' }} me-2"></i>
+                    {{ session['profession'] }}: {{ session['username'] }}
+                </span>
+                <div class="notification-bell" id="notifDropdownToggle">
+                    <i class="fa-solid fa-bell"></i>
+                    <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle {{ 'd-none' if unread_count == 0 }}" id="notifBadge"></span>
+                    
+                    <!-- We aren't querying notifications explicitly for the chat page in app.py currently, 
+                         but we'll include the UI structure so it matches the headers. 
+                         If we wanted to show specific unread count here, we'd need to pass it from the backend. -->
+                         
+                    <div class="notifications-panel" id="notifPanel">
+                        <div class="panel-header">
+                            <h6 class="m-0 fw-bold">Recent Notifications</h6>
+                        </div>
+                        <div class="panel-body">
+                            <div class="text-center py-4 text-muted small">Return to dashboard to view notifications</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="chat-wrapper">
+                <!-- PATIENT DETAILS PANEL -->
+                <div class="patient-details-panel">
+                    <div class="p-4 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h4 class="fw-bold text-dark m-0 text-truncate" style="max-width: 180px;">{{ patient['patient_name'] }}</h4>
+                            <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2 small">{{ patient['status']|upper }}</span>
+                        </div>
+                        <p class="text-muted small m-0"><i class="fa-solid fa-calendar-days me-1"></i> Age: {{ patient['age'] }} Years</p>
+                    </div>
+
+                    <div class="p-4 flex-grow-1">
+                        <h6 class="fw-bold text-muted text-uppercase small mb-3">Clinical Metrics</h6>
+                        <div class="list-group list-group-flush small mb-4">
+                            <div class="list-group-item d-flex justify-content-between px-0 bg-transparent border-bottom-0 pb-1 text-muted">
+                                <span>Consciousness:</span>
+                                <span class="fw-bold {{ 'text-danger' if patient['consciousness_level'] == 'Unconscious' else 'text-dark' }}">{{ patient['consciousness_level'] or 'Alert' }}</span>
+                            </div>
+                            <div class="list-group-item d-flex justify-content-between px-0 bg-transparent border-bottom-0 py-1 text-muted">
+                                <span>Speech:</span>
+                                <span class="fw-bold {{ 'text-warning' if patient['speech_condition'] != 'Normal' else 'text-dark' }}">{{ patient['speech_condition'] or 'Normal' }}</span>
+                            </div>
+                            <div class="list-group-item d-flex justify-content-between px-0 bg-transparent border-bottom-0 py-1 text-muted">
+                                <span>Motor function:</span>
+                                <span class="fw-bold {{ 'text-warning' if patient['motor_function'] != 'Normal' else 'text-dark' }}">{{ patient['motor_function'] or 'Normal' }}</span>
+                            </div>
+                            <div class="list-group-item d-flex justify-content-between px-0 bg-transparent border-bottom-0 py-1 text-muted">
+                                <span>Priority:</span>
+                                <span class="fw-bold {{ 'text-danger' if patient['priority'] == 'Emergency' else 'text-primary' }}">{{ patient['priority'] }}</span>
+                            </div>
+                        </div>
+
+                        <h6 class="fw-bold text-muted text-uppercase small mb-3"><i class="fa-solid fa-robot me-2"></i>AI Case Analysis</h6>
+                        <div class="p-3 mb-4 rounded-3 {{ 'bg-danger bg-opacity-10 border border-danger' if patient['risk_level'] == 'High' else ('bg-warning bg-opacity-10 border border-warning text-dark' if patient['risk_level'] == 'Medium' else 'bg-success bg-opacity-10 border border-success') }}">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="small fw-bold {{ 'text-danger' if patient['risk_level'] == 'High' else ('text-warning' if patient['risk_level'] == 'Medium' else 'text-success') }}">
+                                    <i class="fa-solid fa-shield-virus me-1"></i> RISK LEVEL: {{ patient['risk_level']|upper }}
+                                </span>
+                            </div>
+                            <div class="small">
+                                <span class="text-muted d-block small mb-1">Text-based Prediction:</span>
+                                <span class="fw-bold text-dark">{{ patient['predicted_condition'] }}</span>
+                            </div>
+                            
+                            {% if patient['ai_prediction'] %}
+                            <div class="small mt-3 pt-3 border-top border-secondary border-opacity-25">
+                                <span class="text-muted d-block small mb-1"><i class="fa-solid fa-microchip text-warning me-1"></i> MRI AI Analysis:</span>
+                                <span class="fw-bold {{ 'text-danger' if 'stroke' in patient['ai_prediction']|lower else 'text-success' }}">{{ patient['ai_prediction'] }}</span>
+                            </div>
+                            {% endif %}
+                            
+                            <hr class="my-3 opacity-10">
+                            
+                            <div id="aiSummaryArea">
+                                <button onclick="generateAISummary()" class="btn btn-sm btn-outline-primary border-0 p-0 text-uppercase fw-bold" style="font-size: 0.65rem;">
+                                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Generate AI Summary
+                                </button>
+                                <div id="summaryContent" class="small mt-2 d-none" style="font-style: italic; font-size: 0.8rem; line-height: 1.3;">
+                                    Generating structured summary...
+                                </div>
+                            </div>
+                        </div>
+
+                        <h6 class="fw-bold text-muted text-uppercase small mb-3">Presenting Problem</h6>
+                        <div class="bg-light p-3 rounded border-start border-primary border-4 mb-4">
+                            <p class="m-0 small text-dark">{{ patient['problem_description'] }}</p>
+                        </div>
+                    </div>
+
+                    <div class="p-4 bg-light border-top mt-auto d-flex flex-column gap-2">
+                        {% if patient['report_file'] %}
+                        <button type="button" class="btn btn-primary w-100 fw-bold rounded-pill medical-img-preview-btn py-2" data-src="{{ url_for('uploaded_file', filename=patient['report_file']) }}">
+                            <i class="fa-solid fa-file-pdf me-2"></i>Basic Reports
+                        </button>
+                        {% endif %}
+                        
+                        <a href="{{ url_for('imaging_viewer', patient_id=patient['id']) }}" target="_blank" class="btn btn-info text-white w-100 fw-bold rounded-pill py-2 shadow-sm">
+                            <i class="fa-solid fa-x-ray me-2"></i>Advanced Imaging
+                        </a>
+                        
+                        {% if session['profession'] in SPECIALIST_ROLES and patient['status'] != 'Completed' %}
+                        <button type="button" class="btn btn-success w-100 fw-bold rounded-pill py-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#completeCaseModal">
+                            <i class="fa-solid fa-check-double me-2"></i>Complete Case
+                        </button>
+                        {% endif %}
+                        
+                        {% if patient['status'] == 'Completed' %}
+                        <a href="{{ url_for('generate_report', patient_id=patient['id']) }}" class="btn btn-outline-success w-100 fw-bold rounded-pill py-2" target="_blank">
+                            <i class="fa-solid fa-file-pdf me-2"></i>Download Final Report
+                        </a>
+                        {% endif %}
+                        
+                        <form action="{{ url_for('delete_patient', patient_id=patient['id']) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this case completely?');">
+                            <button type="submit" class="btn btn-outline-danger w-100 fw-bold rounded-pill py-2 mt-2">
+                                <i class="fa-solid fa-trash me-2"></i>Delete Case
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- CASE TIMELINE -->
+                    <div class="p-4 border-top mt-auto bg-white">
+                        <h6 class="fw-bold text-muted text-uppercase small mb-4"><i class="fa-solid fa-list-check me-2"></i>Case Progress</h6>
+                        <div class="timeline-container">
+                            <div class="timeline-item completed">
+                                <div class="timeline-marker"></div>
+                                <div class="timeline-content">
+                                    <h6 class="fw-bold text-dark">Case Created</h6>
+                                    <span class="text-muted">By Rural Doctor</span>
+                                </div>
+                            </div>
+                            
+                            <div class="timeline-item {{ 'completed' if patient['specialist_id'] else 'active' }}">
+                                <div class="timeline-marker"></div>
+                                <div class="timeline-content">
+                                    <h6 class="fw-bold {{ 'text-dark' if patient['specialist_id'] else 'text-primary' }}">Specialist Assigned</h6>
+                                    <span class="text-muted">{{ 'Linked successfully' if patient['specialist_id'] else 'Awaiting specialist' }}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="timeline-item {{ 'completed' if messages|length > 0 else ( 'active' if patient['specialist_id'] else '' ) }}">
+                                <div class="timeline-marker"></div>
+                                <div class="timeline-content">
+                                    <h6 class="fw-bold {{ 'text-dark' if messages|length > 0 else ( 'text-primary' if patient['specialist_id'] else 'text-muted' ) }}">Consultation Room</h6>
+                                    <span class="text-muted">{{ 'Activity recorded' if messages|length > 0 else 'Waiting for discussion' }}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="timeline-item {{ 'completed' if patient['status'] == 'Reviewed' else ( 'active' if messages|length > 0 else '' ) }}">
+                                <div class="timeline-marker"></div>
+                                <div class="timeline-content">
+                                    <h6 class="fw-bold {{ 'text-dark' if patient['status'] == 'Reviewed' else ( 'text-primary' if messages|length > 0 else 'text-muted' ) }}">Final Review</h6>
+                                    <span class="text-muted">{{ 'Case concluded' if patient['status'] == 'Reviewed' else 'Preparation phase' }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CHAT PANEL -->
+                <div class="chat-main-panel">
+                    <div class="p-3 border-bottom bg-white d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-4">
+                            <div class="d-flex align-items-center">
+                                <span class="status-dot status-{{ rural_doctor['status'].lower() }} me-2" id="status-{{ rural_doctor['id'] }}"></span>
+                                <span class="text-dark small fw-bold"><i class="fa-solid fa-user-doctor me-1"></i>Dr. {{ rural_doctor['username'] }}</span>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                {% if specialist %}
+                                <span class="status-dot status-{{ specialist['status'].lower() }} me-2" id="status-{{ specialist['id'] }}"></span>
+                                <span class="text-dark small fw-bold"><i class="fa-solid fa-stethoscope me-1"></i>{{ specialist['username'] }} ({{ specialist['profession'] }})</span>
+                                {% else %}
+                                <span class="text-muted small fw-bold"><i class="fa-solid fa-clock me-1"></i>Awaiting Specialist</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="d-flex gap-3 align-items-center">
+                             <button class="btn btn-sm btn-outline-primary d-lg-none" id="toggleDetailsBtn">
+                                <i class="fa-solid fa-info-circle me-1"></i> Details
+                             </button>
+                             {% if session['profession'] not in SPECIALIST_ROLES %}
+                                <a href="{{ url_for('rural_dashboard') }}" class="btn btn-outline-secondary d-flex align-items-center gap-2 px-3 py-1 rounded-pill fw-bold" title="Return to Dashboard">
+                                    <i class="fa-solid fa-house-user"></i> Dashboard
+                                </a>
+                             {% endif %}
+                        </div>
+                    </div>
+                    
+
+                    <div class="chat-messages" id="chat-messages">
+
+                        {% if not messages %}
+                            <div class="text-center mt-5">
+                                <div class="bg-white d-inline-block p-3 rounded-pill shadow-sm border text-muted small fw-bold">
+                                    <i class="fa-solid fa-lock me-2"></i>End-to-End Encrypted Consultation Started
+                                </div>
+                            </div>
+                        {% endif %}
+
+                        {% for msg in messages %}
+                            {% set is_mine = (msg['sender_id'] == session['user_id']) %}
+                            {% set bubble_color = 'bubble-rural' if msg['profession'] == 'Rural Doctor' else 'bubble-specialist' %}
+                            
+                            <div class="message {{ 'message-mine' if is_mine else 'message-other' }} d-flex flex-column">
+                                {% if not is_mine %}
+                                    <div class="message-meta mb-1 ms-2">
+                                        Dr. {{ msg['username'] }} ({{ msg['profession'] }})
+                                    </div>
+                                {% endif %}
+                                
+                                <div class="message-bubble {{ bubble_color }} shadow-sm">
+                                    {% if msg['message'] %}
+                                        <div class="mb-1">{{ msg['message'] }}</div>
+                                    {% endif %}
+                                    {% if msg['file_path'] %}
+                                        <div class="attachment-box mt-2">
+                                            {% if msg['file_path'].lower().endswith(('.png', '.jpg', '.jpeg', '.gif')) %}
+                                                <img src="{{ url_for('uploaded_file', filename=msg['file_path']) }}" class="img-fluid rounded border shadow-sm medical-img-preview" style="max-height: 250px; cursor: pointer;">
+                                            {% else %}
+                                                <a href="{{ url_for('uploaded_file', filename=msg['file_path']) }}" target="_blank" class="btn btn-sm btn-light border w-100 text-start py-2">
+                                                    <i class="fa-solid fa-file-medical me-2"></i>Download Attachment
+                                                </a>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="message-meta mt-1 {{ 'me-2' if is_mine else 'ms-2' }}">
+                                    {{ msg['timestamp'] }}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="chat-input-area">
+                        <form id="chat-form" class="d-flex gap-2 align-items-center">
+                            <button type="button" id="attach-btn" class="btn btn-light border-0 rounded-circle text-primary" title="Attach File" style="width: 45px; height: 45px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fa-solid fa-plus fa-xl"></i>
+                            </button>
+                            <input type="file" id="chat-file-input" style="display: none;">
+                            <input type="text" id="message-input" name="message" class="form-control chat-input" placeholder="Type your medical advice or response..." required autocomplete="off" autofocus>
+                            <button type="submit" class="btn btn-primary btn-send shadow">
+                                <i class="fa-solid fa-paper-plane"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Shared Diagnostic Viewer Component -->
+    {% include 'diagnostic_viewer.html' %}
+    <script>
+        // Auto-scroll chat to the bottom
+        function scrollToBottom() {
+            var chatDiv = document.getElementById("chat-messages");
+            chatDiv.scrollTop = chatDiv.scrollHeight;
+        }
+        
+        // Initial scroll
+        scrollToBottom();
+
+        // Variable to hold the current session user info for rendering
+        const currentUserId = parseInt("{{ session['user_id'] }}");
+        const patientId = parseInt("{{ patient['id'] }}");
+
+        // --- Socket.IO Implementation ---
+        const socket = io();
+
+        socket.on('connect', function() {
+            console.log('Connected to WebSocket server');
+            // Join the patient room
+            socket.emit('join_room', { patient_id: patientId });
+        });
+
+        socket.on('connect_error', (error) => {
+            console.error('Socket Connection Error:', error);
+        });
+
+        socket.on('disconnect', (reason) => {
+            console.warn('Socket Disconnected:', reason);
+        });
+
+        // Handle sending messages
+        document.getElementById('chat-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const messageInput = document.getElementById('message-input');
+            const message = messageInput.value.trim();
+            
+            console.log("Attempting to send message:", message);
+            
+            if (message) {
+                // Emit message to server
+                socket.emit('send_message', {
+                    patient_id: patientId,
+                    message: message
+                });
+                // Clear input
+                messageInput.value = '';
+            }
+        });
+
+        // Handle receiving messages
+        socket.on('receive_message', function(data) {
+            console.log("New message received:", data);
+            
+            const chatMessages = document.getElementById('chat-messages');
+            
+            // Remove the "lock"/encrypted dummy message if this is the first real message
+            const noMsgAlert = chatMessages.querySelector('.text-center.mt-5');
+            if (noMsgAlert) {
+                noMsgAlert.remove();
+            }
+
+            const isMine = (data.sender_id === currentUserId);
+            const bubbleColorClass = (data.profession === 'Rural Doctor') ? 'bubble-rural' : 'bubble-specialist';
+            
+            // Build the message HTML block
+            let html = '';
+            html += `<div class="message ${isMine ? 'message-mine' : 'message-other'} d-flex flex-column">`;
+            
+            if (!isMine) {
+                html += `
+                    <div class="message-meta mb-1 ms-2">
+                        Dr. ${data.username} (${data.profession})
+                    </div>
+                `;
+            }
+
+            html += `<div class="message-bubble ${bubbleColorClass} shadow-sm">`;
+            
+            if (data.message) {
+                html += `<div class="mb-1">${data.message}</div>`;
+            }
+            
+            if (data.file_path) {
+                const filePath = `/uploads/${data.file_path}`;
+                const isImage = data.file_path.toLowerCase().match(/\.(jpg|jpeg|png|gif)$/);
+                
+                html += `<div class="attachment-box mt-2">`;
+                if (isImage) {
+                    html += `<img src="${filePath}" class="img-fluid rounded border shadow-sm medical-img-preview medical-img-preview-btn" data-src="${filePath}" style="max-height: 250px; cursor: pointer;">`;
+                } else {
+                    html += `
+                        <a href="${filePath}" target="_blank" class="btn btn-sm btn-light border w-100 text-start py-2">
+                            <i class="fa-solid fa-file-medical me-2"></i>Download Attachment
+                        </a>
+                    `;
+                }
+                html += `</div>`;
+            }
+
+            html += `</div>`;
+
+            html += `
+                <div class="message-meta mt-1 ${isMine ? 'me-2' : 'ms-2'}">
+                    ${data.timestamp}
+                </div>
+            </div>`;
+
+            // Append to DOM
+            chatMessages.insertAdjacentHTML('beforeend', html);
+            scrollToBottom();
+        });
+
+        // Add Attachment Toggle logic
+        const attachBtn = document.getElementById('attach-btn');
+        const fileInput = document.getElementById('chat-file-input');
+
+        attachBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                const file = this.files[0];
+                const formData = new FormData();
+                formData.append('file', file);
+
+                // Disable input during upload
+                attachBtn.disabled = true;
+                attachBtn.innerHTML = '<span class="spinner-border spinner-border-sm text-primary"></span>';
+
+                fetch(`/upload_chat_attachment/${patientId}`, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Emit message via socket with file_path
+                        socket.emit('send_message', {
+                            patient_id: patientId,
+                            message: `Sent an attachment: ${file.name}`,
+                            file_path: data.filename
+                        });
+                    } else {
+                        alert("Upload failed: " + data.message);
+                    }
+                })
+                .catch(err => {
+                    console.error("Upload error:", err);
+                    alert("Error uploading file.");
+                })
+                .finally(() => {
+                    attachBtn.disabled = false;
+                    attachBtn.innerHTML = '<i class="fa-solid fa-plus fa-xl"></i>';
+                    fileInput.value = ''; // Reset input
+                });
+            }
+        });
+
+        // Leave room completely when navigating away
+        window.addEventListener("beforeunload", function (e) {
+            socket.emit('leave_room', { patient_id: patientId });
+        });
+
+        // Notifications Toggle Logic (existing)
+        document.addEventListener('DOMContentLoaded', function() {
+            const bell = document.getElementById('notifDropdownToggle');
+            const panel = document.getElementById('notifPanel');
+
+            if(bell && panel) {
+                bell.addEventListener('click', function(e) {
+                    if (e.target.closest('a')) return;
+                    panel.classList.toggle('show');
+                });
+
+                document.addEventListener('click', function(e) {
+                    if (!bell.contains(e.target)) {
+                        panel.classList.remove('show');
+                    }
+                });
+            }
+            
+            // Mobile Details Toggle
+            const toggleDetailsBtn = document.getElementById('toggleDetailsBtn');
+            const detailsPanel = document.querySelector('.patient-details-panel');
+            const chatWrapper = document.querySelector('.chat-wrapper');
+            if (toggleDetailsBtn && detailsPanel && chatWrapper) {
+                toggleDetailsBtn.addEventListener('click', function() {
+                    if (detailsPanel.style.display === 'none') {
+                        detailsPanel.style.display = 'flex';
+                        chatWrapper.classList.remove('details-hidden');
+                        this.innerHTML = '<i class="fa-solid fa-info-circle me-1"></i> Details';
+                    } else {
+                        detailsPanel.style.display = 'none';
+                        chatWrapper.classList.add('details-hidden');
+                        this.innerHTML = '<i class="fa-solid fa-eye me-1"></i> Show Details';
+                    }
+                });
+            }
+        });
+
+        // Case Completion Logic
+        window.generateAISummary = function() {
+            const summaryArea = document.getElementById('summaryContent');
+            summaryArea.classList.remove('d-none');
+            summaryArea.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Analyzing consultation...';
+            
+            fetch(`/api/generate_summary/${patientId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.summary) {
+                        summaryArea.innerHTML = marked.parse(data.summary);
+                    } else {
+                        summaryArea.innerText = "Summary not available.";
+                    }
+                })
+                .catch(err => {
+                    summaryArea.innerHTML = '<span class="text-danger small">Failed to generate summary.</span>';
+                });
+        };
+
+        window.submitCaseCompletion = function() {
+            const form = document.getElementById('completeCaseForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const btn = document.getElementById('finalSubmitBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
+
+            const formData = new FormData(form);
+            fetch(`/complete_case/${patientId}`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const modalEl = document.getElementById('completeCaseModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    modal.hide();
+                    window.location.reload();
+                } else {
+                    btn.disabled = false;
+                    btn.innerHTML = 'Generate Report & Complete';
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btn.innerHTML = 'Generate Report & Complete';
+                alert('Network error occurred.');
+            });
+        };
+
+        // Listen for status updates
+        socket.on('status_update', function(data) {
+            if (data.patient_id == patientId) {
+                if (data.status === 'Completed' && "{{ session['profession'] }}" === "Rural Doctor") {
+                    alert("The specialist has finalized the medical report. Case is now completed.");
+                }
+                window.location.reload();
+            }
+        });
+
+        // Listen for AI analysis completion
+        socket.on('scan_analyzed', function(data) {
+            if (data.patient_id == patientId) {
+                // Background refresh so the AI results pop up
+                window.location.reload();
+            }
+        });
+    </script>
+
+    <!-- Complete Case Modal -->
+    <div class="modal fade" id="completeCaseModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-success text-white py-3">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-file-medical me-2"></i>Finalize Consultation</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="completeCaseForm">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-muted text-uppercase">Final Diagnosis / Clinical Conclusion</label>
+                            <textarea name="final_diagnosis" class="form-control" rows="4" placeholder="Enter findings, differential diagnosis, or clinical conclusion..." required></textarea>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label fw-bold small text-muted text-uppercase">Treatment Plan / Recommendations</label>
+                            <textarea name="recommendations" class="form-control" rows="3" placeholder="Diet, medication, follow-up tests, etc..." required></textarea>
+                        </div>
+                    </form>
+                    <div class="alert alert-info small d-flex align-items-center gap-2 mb-0">
+                        <i class="fa-solid fa-circle-info fa-lg"></i>
+                        <span>Completing the case will generate a professional medical report and notify the rural doctor.</span>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-4 pt-0">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" id="finalSubmitBtn" onclick="submitCaseCompletion()" class="btn btn-success rounded-pill px-4 fw-bold">Generate Report & Complete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- AI Chatbot -->
+    {% include 'chatbot.html' %}
+</body>
+</html>

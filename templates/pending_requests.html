@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Requests - easyMed</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+</head>
+<body>
+    <div class="hospital-pattern"></div>
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <i class="fa-solid fa-house-medical"></i>
+            <h3>easyMed</h3>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a href="{{ url_for('rural_dashboard' if session['profession'] == 'Rural Doctor' else 'specialist_dashboard') }}" class="nav-link">
+                    <i class="fa-solid fa-house-medical"></i> Dashboard
+                </a>
+            </li>
+            {% if session['profession'] == 'Rural Doctor' %}
+            <li class="nav-item">
+                <a href="{{ url_for('rural_dashboard') }}#add-patient-section" class="nav-link">
+                    <i class="fa-solid fa-user-plus"></i> Add Patient
+                </a>
+            </li>
+            {% else %}
+            <li class="nav-item">
+                <a href="{{ url_for('pending_requests') }}" class="nav-link active">
+                    <i class="fa-solid fa-clipboard-list"></i> New Requests
+                </a>
+            </li>
+            {% endif %}
+            <li class="nav-item">
+                <a href="{{ url_for('my_patients') }}" class="nav-link">
+                    <i class="fa-solid {{ 'fa-user-doctor' if session['profession'] in SPECIALIST_ROLES else 'fa-users' }}"></i> 
+                    {{ 'My Cases' if session['profession'] in SPECIALIST_ROLES else 'My Patients' }}
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('active_chats') }}" class="nav-link">
+                    <i class="fa-solid fa-comments"></i> Chat
+                </a>
+            </li>
+            {% if session['profession'] == 'Rural Doctor' %}
+            <li class="nav-item">
+                <a href="{{ url_for('reports_view') }}" class="nav-link">
+                    <i class="fa-solid fa-file-medical"></i> Reports
+                </a>
+            </li>
+            {% endif %}
+            <li class="nav-item">
+                <a href="{{ url_for('case_history') }}" class="nav-link">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Case History
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('ai_assistant') }}" class="nav-link">
+                    <i class="fa-solid fa-robot"></i> AI Assistant
+                </a>
+            </li>
+        </ul>
+        <div class="sidebar-footer">
+            <a href="{{ url_for('logout') }}" class="logout-link">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-wrapper">
+        <header class="top-header">
+            <div class="d-flex align-items-center gap-3">
+                <h4 class="m-0 fw-bold text-white">{{ session['profession'] }} Portal</h4>
+            </div>
+        </header>
+
+        <div class="content-area">
+            <div class="card medical-card">
+                <div class="card-header bg-transparent border-0 pt-4">
+                    <h4 class="text-primary fw-bold"><i class="fa-solid fa-inbox me-2"></i>New Patient Requests</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        {% for patient in pending %}
+                        <div class="col-md-6 col-xl-4">
+                            <div class="card medical-card h-100 border-top border-4 {{ 'border-danger' if patient['priority'] == 'Emergency' else 'border-warning' }}">
+                                <div class="card-body d-flex flex-column">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h5 class="fw-bold m-0">{{ patient['patient_name'] }} <span class="badge tag-{{ patient['specialist_type'].lower() }} ms-2" style="font-size: 0.65rem;">{{ patient['specialist_type'] }}</span></h5>
+                                        <div class="d-flex flex-column align-items-end gap-1">
+                                            {% if patient['priority'] == 'Emergency' %}
+                                            <span class="badge bg-danger pulse-emergency">HIGH PRIORITY</span>
+                                            {% else %}
+                                            <span class="badge bg-primary">NORMAL</span>
+                                            {% endif %}
+                                            <span class="badge bg-info bg-opacity-10 text-info small border-info border" style="font-size: 0.65rem;">
+                                                <i class="fa-solid fa-user-check me-1"></i>ASSIGNED TO YOU
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <p class="text-muted small mb-3 d-flex align-items-center gap-2">
+                                        From: <strong>Dr. {{ patient['rural_doctor_name'] }}</strong>
+                                        <span class="status-dot {{ 'status-online' if patient['doctor_status'] == 'Online' else 'status-offline' }}" title="{{ patient['doctor_status'] }}"></span>
+                                    </p>
+                                    <div class="bg-light p-2 rounded mb-3 small text-muted">
+                                        {{ patient['problem_description'][:100] }}...
+                                    </div>
+                                    <div class="mt-auto d-flex flex-column gap-2">
+                                        {% if patient['report_file'] %}
+                                        <button type="button" class="btn btn-sm btn-outline-primary medical-img-preview-btn w-100 fw-bold mb-2 d-flex align-items-center justify-content-center gap-2" data-src="{{ url_for('uploaded_file', filename=patient['report_file']) }}">
+                                            <i class="fa-solid fa-file-medical"></i> Review Diagnostic Report
+                                        </button>
+                                        {% endif %}
+                                        <div class="d-flex gap-2">
+                                            <form action="{{ url_for('update_case_status', patient_id=patient['id']) }}" method="POST" class="flex-grow-1">
+                                                <input type="hidden" name="action" value="accept">
+                                                <button type="submit" class="btn btn-sm btn-success w-100 fw-bold">Accept</button>
+                                            </form>
+                                            <form action="{{ url_for('update_case_status', patient_id=patient['id']) }}" method="POST" class="flex-grow-1">
+                                                <input type="hidden" name="action" value="reject">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger w-100 fw-bold">Reject</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="col-12 text-center py-5">
+                            <i class="fa-solid fa-check-double fa-3x text-muted opacity-20 mb-3"></i>
+                            <h5 class="text-muted">No new requests. You are all caught up!</h5>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% include 'diagnostic_viewer.html' %}
+</body>
+</html>

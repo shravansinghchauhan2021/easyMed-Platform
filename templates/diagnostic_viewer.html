@@ -1,0 +1,180 @@
+<!-- Medical Image Viewer Modal - easyMed Reusable Component -->
+<div class="modal fade" id="medicalViewer" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content border-0 bg-dark bg-opacity-95 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title text-white"><i class="fa-solid fa-microscope me-2 text-info"></i>easyMed Diagnostic Viewer</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-4">
+                    <div class="col-lg-9">
+                        <div id="viewerWrapper" class="bg-black rounded-3 shadow-inner d-flex align-items-center justify-content-center" style="height: 70vh; overflow: hidden; position: relative;">
+                            <img src="" id="viewerImage" alt="Diagnostic Scan" style="max-width: 100%; max-height: 100%; transition: transform 0.1s ease-out; cursor: grab;">
+                        </div>
+                    </div>
+                    <div class="col-lg-3">
+                        <div class="viewer-controls p-3 bg-secondary bg-opacity-10 rounded-3 text-white">
+                            <h6 class="fw-bold mb-4 border-bottom border-white border-opacity-10 pb-2">Image Adjustments</h6>
+                            
+                            <div class="mb-3">
+                                <label class="small fw-bold opacity-75 d-block mb-2">Brightness: <span id="brightVal">100%</span></label>
+                                <input type="range" class="form-range" id="brightnessRange" min="0" max="200" value="100">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="small fw-bold opacity-75 d-block mb-2">Contrast: <span id="contrastVal">100%</span></label>
+                                <input type="range" class="form-range" id="contrastRange" min="0" max="250" value="100">
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="small fw-bold opacity-75 d-block mb-2">Zoom Level: <span id="zoomVal">100%</span></label>
+                                <input type="range" class="form-range" id="zoomRange" min="50" max="300" value="100">
+                            </div>
+
+                            <button class="btn btn-outline-light w-100 mb-2 fw-bold" id="resetViewer">
+                                <i class="fa-solid fa-undo me-2"></i>Reset View
+                            </button>
+                            <a id="downloadLink" href="#" target="_blank" class="btn btn-info w-100 text-white fw-bold">
+                                <i class="fa-solid fa-download me-2"></i>Direct Link
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Diagnostic Viewer Global Logic
+    (function() {
+        let currentZoom = 1;
+        let brightness = 100;
+        let contrast = 100;
+        let medicalModal = null;
+        
+        const viewerImage = document.getElementById('viewerImage');
+        const brightRange = document.getElementById('brightnessRange');
+        const contrastRange = document.getElementById('contrastRange');
+        const zoomRange = document.getElementById('zoomRange');
+        
+        const brightVal = document.getElementById('brightVal');
+        const contrastVal = document.getElementById('contrastVal');
+        const zoomVal = document.getElementById('zoomVal');
+        const viewerWrapper = document.getElementById('viewerWrapper');
+        
+        function initModal() {
+            if (medicalModal) return true;
+            const viewerModalElement = document.getElementById('medicalViewer');
+            if (viewerModalElement && typeof bootstrap !== 'undefined') {
+                medicalModal = new bootstrap.Modal(viewerModalElement);
+                return true;
+            }
+            return false;
+        }
+
+        // Initialize on Load
+        document.addEventListener('DOMContentLoaded', initModal);
+
+        function updateImageStyles() {
+            if (!viewerImage) return;
+            viewerImage.style.filter = `brightness(${brightness}%) contrast(${contrast}%)`;
+            viewerImage.style.transform = `scale(${currentZoom})`;
+            if(brightVal) brightVal.innerText = brightness + '%';
+            if(contrastVal) contrastVal.innerText = contrast + '%';
+            if(zoomVal) zoomVal.innerText = Math.round(currentZoom * 100) + '%';
+        }
+
+        function resetSettings() {
+            currentZoom = 1;
+            brightness = 100;
+            contrast = 100;
+            if(brightRange) brightRange.value = 100;
+            if(contrastRange) contrastRange.value = 100;
+            if(zoomRange) zoomRange.value = 100;
+            updateImageStyles();
+        }
+
+        // Listener for all medical image preview triggers
+        document.addEventListener('click', function(e) {
+            // Expanded selectors to catch chat images and buttons
+            const btn = e.target.closest('.medical-msg-img, .medical-img-preview-btn, .medical-img-preview');
+            
+            if (btn) {
+                e.preventDefault();
+                const src = btn.getAttribute('data-src') || btn.src;
+                if (src) {
+                    // Lazy-init if DOMContentLoaded was too late or bootstrap was loaded later
+                    if (!initModal()) {
+                        console.error('Bootstrap Modal or medicalViewer element not found');
+                        return;
+                    }
+
+                    viewerImage.src = src;
+                    const downloadBtn = document.getElementById('downloadLink');
+                    if(downloadBtn) downloadBtn.href = src;
+                    
+                    resetSettings();
+                    medicalModal.show();
+                }
+            }
+        });
+
+        if(document.getElementById('resetViewer')) {
+            document.getElementById('resetViewer').addEventListener('click', resetSettings);
+        }
+
+        if(brightRange) {
+            brightRange.addEventListener('input', function() {
+                brightness = this.value;
+                updateImageStyles();
+            });
+        }
+
+        if(contrastRange) {
+            contrastRange.addEventListener('input', function() {
+                contrast = this.value;
+                updateImageStyles();
+            });
+        }
+
+        if(zoomRange) {
+            zoomRange.addEventListener('input', function() {
+                currentZoom = this.value / 100;
+                updateImageStyles();
+            });
+        }
+
+        // Pan Logic
+        let isDragging = false;
+        let startX, startY, scrollLeft, scrollTop;
+
+        if (viewerImage && viewerWrapper) {
+            viewerImage.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                startX = e.pageX - viewerWrapper.offsetLeft;
+                startY = e.pageY - viewerWrapper.offsetTop;
+                scrollLeft = viewerWrapper.scrollLeft;
+                scrollTop = viewerWrapper.scrollTop;
+                viewerImage.style.cursor = 'grabbing';
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+                if(viewerImage) viewerImage.style.cursor = 'grab';
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                e.preventDefault();
+                const x = e.pageX - viewerWrapper.offsetLeft;
+                const y = e.pageY - viewerWrapper.offsetTop;
+                const walkX = (x - startX);
+                const walkY = (y - startY);
+                viewerWrapper.scrollLeft = scrollLeft - walkX;
+                viewerWrapper.scrollTop = scrollTop - walkY;
+            });
+        }
+    })();
+</script>

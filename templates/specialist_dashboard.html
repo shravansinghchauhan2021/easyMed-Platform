@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ session['profession'] }} Dashboard - easyMed</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Custom Dashboard CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard_enhancements.css') }}">
+    <!-- Professional Loader Assets -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='loader.css') }}">
+    <script src="{{ url_for('static', filename='loader.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='theme-toggle.js') }}" defer></script>
+    <style>
+        .desc-box {
+            background-color: #f8fafc;
+            border-left: 3px solid var(--primary-color);
+            padding: 12px;
+            font-size: 0.9rem;
+            color: #475569;
+        }
+    </style>
+</head>
+<body>
+    {% include 'loader.html' %}
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <div class="hospital-pattern"></div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <i class="fa-solid fa-house-medical"></i>
+            <h3>easyMed</h3>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a href="#specialist-overview" class="nav-link active">
+                    <i class="fa-solid fa-house-medical"></i> Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('pending_requests') }}" class="nav-link">
+                    <i class="fa-solid fa-clipboard-list"></i> New Requests
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('my_patients') }}" class="nav-link">
+                    <i class="fa-solid fa-user-doctor"></i> My Cases
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('active_chats') }}" class="nav-link">
+                    <i class="fa-solid fa-comments"></i> Chat
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('case_history') }}" class="nav-link">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Case History
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('analytics_dashboard') }}" class="nav-link">
+                    <i class="fa-solid fa-chart-line"></i> Analytics
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('ai_assistant') }}" class="nav-link">
+                    <i class="fa-solid fa-robot"></i> AI Assistant
+                </a>
+            </li>
+        </ul>
+        <div class="sidebar-footer">
+            <a href="{{ url_for('logout') }}" class="logout-link">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT WRAPPER -->
+    <div class="main-wrapper">
+        <!-- TOP HEADER (Always at the top) -->
+        <header class="top-header">
+            <button class="menu-toggle d-lg-none me-3" id="sidebarToggle">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <div class="header-ecg"></div>
+            <div class="d-flex align-items-center gap-3 position-relative z-1">
+                <h4 class="m-0 fw-bold text-white"><i class="fa-solid fa-stethoscope me-3 text-white-50"></i>{{ session['profession'] }} Portal</h4>
+            </div>
+            <div class="header-user-info">
+                <span class="user-badge text-white">
+                    <span class="status-dot {{ 'status-online' if session.get('user_id') else 'status-offline' }} me-2" id="userStatusDot"></span>
+                    <i class="fa-solid fa-stethoscope me-2"></i>Dr. {{ session['username'] }}
+                    <span class="ms-2 badge bg-success bg-opacity-25 small" style="font-size: 0.6rem;">ONLINE</span>
+                </span>
+                <button class="theme-toggle-btn ms-3" id="themeToggle" title="Toggle Dark/Light Mode">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+                <a href="{{ url_for('analytics_dashboard') }}" class="btn btn-sm btn-outline-light rounded-pill px-3 ms-3 border-0">
+                    <i class="fa-solid fa-chart-line me-1"></i> Analytics
+                </a>
+                <div class="notification-bell text-white" id="notifDropdownToggle">
+                    <i class="fa-solid fa-bell"></i>
+                    <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle {{ 'd-none' if unread_count == 0 }}" id="notifBadge"></span>
+                    
+                    <!-- Dropdown Panel -->
+                    <div class="notifications-panel" id="notifPanel">
+                        <div class="panel-header bg-light">
+                            <h6 class="m-0 fw-bold text-dark">Recent Notifications</h6>
+                        </div>
+                        <div class="panel-body">
+                            {% if notifications %}
+                                {% for notif in notifications %}
+                                <a href="{{ url_for('handle_notification', notif_id=notif['id']) }}" class="notif-item {{ 'unread' if not notif['read_status'] else '' }}">
+                                    <div class="notif-icon">
+                                        <i class="fa-solid fa-circle-info"></i>
+                                    </div>
+                                    <div class="notif-content">
+                                        <p class="m-0 text-dark small">{{ notif['message'] }}</p>
+                                        <span class="text-muted" style="font-size: 0.7rem;">{{ notif['timestamp'] }}</span>
+                                    </div>
+                                </a>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-center py-4 text-muted small">No recent notifications</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-dashboard-content p-4" id="main-dashboard-content">
+            <!-- Animated Hero Section -->
+            <section class="hero-enhancement" id="hero">
+                <div class="hero-theme-controls">
+                    <span class="theme-label">Theme color</span>
+                    <div class="color-presets">
+                        <div class="color-dot active" style="background: linear-gradient(135deg, #0ea5e9, #22d3ee);" onclick="updateHeroColor('linear-gradient(135deg, #0ea5e9, #22d3ee)', this)"></div>
+                        <div class="color-dot" style="background: linear-gradient(135deg, #6366f1, #a855f7);" onclick="updateHeroColor('linear-gradient(135deg, #6366f1, #a855f7)', this)"></div>
+                        <div class="color-dot" style="background: linear-gradient(135deg, #10b981, #34d399);" onclick="updateHeroColor('linear-gradient(135deg, #10b981, #34d399)', this)"></div>
+                        <div class="color-dot" style="background: linear-gradient(135deg, #f43f5e, #fb7185);" onclick="updateHeroColor('linear-gradient(135deg, #f43f5e, #fb7185)', this)"></div>
+                        <div class="custom-picker-wrapper" title="Choose custom color">
+                            <input type="color" id="hero-color-picker" oninput="updateHeroColor(this.value, this)">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hero-content">
+                    <div class="hero-text-container">
+                        <h1 class="hero-title">Welcome to easyMed</h1>
+                        <p class="hero-subtitle">Your Intelligent Multi-Specialty Telemedicine Platform</p>
+                        <ul class="hero-features">
+                            <li><i class="fa-solid fa-circle-check"></i> Real-time doctor consultation</li>
+                            <li><i class="fa-solid fa-circle-check"></i> Multi-specialist system</li>
+                            <li><i class="fa-solid fa-circle-check"></i> AI-powered chatbot</li>
+                            <li><i class="fa-solid fa-circle-check"></i> Medical imaging analysis</li>
+                            <li><i class="fa-solid fa-circle-check"></i> Patient case tracking</li>
+                            <li><i class="fa-solid fa-circle-check"></i> Smart routing and analytics</li>
+                        </ul>
+                    </div>
+                    <div class="hero-illustration">
+                        <img src="{{ url_for('static', filename='images/doctor_illustration.png') }}" alt="Medical Professional">
+                    </div>
+                </div>
+            </section>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                  </div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+
+            <div id="specialist-overview" class="d-flex justify-content-between align-items-center mb-4 pt-3">
+                <h1 class="page-title m-0">{{ session['profession'] }} Overview</h1>
+                <p class="text-muted m-0"><i class="fa-solid fa-notes-medical me-2"></i> easyMed Insights</p>
+            </div>
+
+            <!-- DYNAMIC STATS CARDS -->
+            <div class="row g-4 mb-5">
+                <div class="col-xl-3 col-md-6">
+                    <a href="{{ url_for('my_patients') }}" class="stat-link">
+                        <div class="card medical-card border-0 shadow-sm text-center p-2">
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <span class="p-3 bg-primary bg-opacity-10 text-primary rounded-circle d-inline-block">
+                                        <i class="fa-solid fa-users fa-xl"></i>
+                                    </span>
+                                </div>
+                                <h2 class="text-primary fw-bold m-0">{{ total }}</h2>
+                                <p class="text-muted small fw-bold text-uppercase mt-2 mb-0">Total Patients</p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-xl-3 col-md-6">
+                    <a href="{{ url_for('pending_requests') }}" class="stat-link">
+                        <div class="card medical-card border-0 shadow-sm text-center p-2">
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <span class="p-3 bg-warning bg-opacity-10 text-warning rounded-circle d-inline-block">
+                                        <i class="fa-solid fa-clock fa-xl"></i>
+                                    </span>
+                                </div>
+                                <h2 class="text-warning fw-bold m-0">{{ pending_count }}</h2>
+                                <p class="text-muted small fw-bold text-uppercase mt-2 mb-0">Pending Cases</p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-xl-3 col-md-6">
+                    <a href="{{ url_for('my_patients', priority='Emergency') }}" class="stat-link">
+                        <div class="card medical-card border-0 shadow-sm text-center p-2">
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <span class="p-3 bg-danger bg-opacity-10 text-danger rounded-circle d-inline-block">
+                                        <i class="fa-solid fa-triangle-exclamation fa-xl"></i>
+                                    </span>
+                                </div>
+                                <h2 class="text-danger fw-bold m-0">{{ specialty_stats['emergency_cases'] }}</h2>
+                                <p class="text-muted small fw-bold text-uppercase mt-2 mb-0">Emergency Alerts</p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-xl-3 col-md-6">
+                    <a href="{{ url_for('case_history', status='Reviewed') }}" class="stat-link">
+                        <div class="card medical-card border-0 shadow-sm text-center p-2">
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <span class="p-3 bg-success bg-opacity-10 text-success rounded-circle d-inline-block">
+                                        <i class="fa-solid fa-check-double fa-xl"></i>
+                                    </span>
+                                </div>
+                                <h2 class="text-success fw-bold m-0">{{ specialty_stats['reviewed_cases'] }}</h2>
+                                <p class="text-muted small fw-bold text-uppercase mt-2 mb-0">Completed Cases</p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            {% if session['profession'] == 'Neurologist' %}
+            <div class="alert alert-info border-0 shadow-sm d-flex align-items-center mb-5">
+                <i class="fa-solid fa-info-circle fa-2x me-3"></i>
+                <div>
+                    <h6 class="m-0 fw-bold">Specialty Insight: Stroke Suspicion</h6>
+                    <p class="m-0 small">There are <strong>{{ specialty_stats['stroke_suspicion'] }}</strong> cases with consciousness or speech impairment requiring immediate review.</p>
+                </div>
+            </div>
+            {% elif session['profession'] == 'Cardiologist' %}
+             <div class="alert alert-danger border-0 shadow-sm d-flex align-items-center mb-5">
+                <i class="fa-solid fa-heart-pulse fa-2x me-3"></i>
+                <div>
+                    <h6 class="m-0 fw-bold">Cardiology Alert</h6>
+                    <p class="m-0 small">There are <strong>{{ specialty_stats['heart_critical'] }}</strong> cases with abnormal heart rates (Tachycardia/Bradycardia).</p>
+                </div>
+            {% endif %}
+
+            <!-- Bottom Wellness Section -->
+            <section class="wellness-section">
+                <h2 class="wellness-title">Healthy Living Tips</h2>
+                <div class="wellness-grid">
+                    <div class="wellness-card">
+                        <img src="{{ url_for('static', filename='images/exercise.png') }}" alt="Exercise">
+                        <div class="wellness-card-content">
+                            <p class="wellness-card-text">Physical Activity for Longevity</p>
+                            <ul class="wellness-details-list text-start">
+                                <li><i class="fa-solid fa-check"></i> Aim for 150 minutes of moderate aerobic activity weekly.</li>
+                                <li><i class="fa-solid fa-check"></i> Daily walking reduces current risk of stroke and heart disease.</li>
+                                <li><i class="fa-solid fa-check"></i> Incorporate strength training twice a week for muscle health.</li>
+                                <li><i class="fa-solid fa-check"></i> Activity improves mental clarity and reduces clinical brain fog.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="wellness-card">
+                        <img src="{{ url_for('static', filename='images/healthy_food.png') }}" alt="Healthy Food">
+                        <div class="wellness-card-content">
+                            <p class="wellness-card-text">Nutritional Balance & Vitality</p>
+                            <ul class="wellness-details-list text-start">
+                                <li><i class="fa-solid fa-pepper-hot"></i> Prioritize whole grains, lean proteins, and leafy greens.</li>
+                                <li><i class="fa-solid fa-pepper-hot"></i> Minimize processed sugars to maintain steady energy levels.</li>
+                                <li><i class="fa-solid fa-pepper-hot"></i> Hydrate with at least 8-10 glasses of clean water daily.</li>
+                                <li><i class="fa-solid fa-pepper-hot"></i> Antioxidant-rich foods support rapid cellular repair.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="wellness-card">
+                        <img src="{{ url_for('static', filename='images/meditation.png') }}" alt="Meditation">
+                        <div class="wellness-card-content">
+                            <p class="wellness-card-text">Mindfulness & Mental Peace</p>
+                            <ul class="wellness-details-list text-start">
+                                <li><i class="fa-solid fa-heart-pulse"></i> Practice deep breathing for 10 minutes every single day.</li>
+                                <li><i class="fa-solid fa-heart-pulse"></i> Engaging with nature significantly lowers baseline cortisol.</li>
+                                <li><i class="fa-solid fa-heart-pulse"></i> Maintain healthy work-life balance to avoid burnout risk.</li>
+                                <li><i class="fa-solid fa-heart-pulse"></i> Regular breaks improve overall cognitive focus and clarity.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="wellness-card">
+                        <img src="{{ url_for('static', filename='images/sleep.png') }}" alt="Sleep">
+                        <div class="wellness-card-content">
+                            <p class="wellness-card-text">Restorative Sleep & Recovery</p>
+                            <ul class="wellness-details-list text-start">
+                                <li><i class="fa-solid fa-moon"></i> Consistent 7-9 hours of sleep regulates immune function.</li>
+                                <li><i class="fa-solid fa-moon"></i> Avoid blue light from screens 1 hour before scheduled bed.</li>
+                                <li><i class="fa-solid fa-moon"></i> Maintain a dark, cool, quiet environment for deep rest.</li>
+                                <li><i class="fa-solid fa-moon"></i> Quality sleep is crucial for neuro-regenerative processes.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div> <!-- End p-4 -->
+    </div> <!-- End main-wrapper -->
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Notifications Toggle Logic
+        document.addEventListener('DOMContentLoaded', function() {
+            const bell = document.getElementById('notifDropdownToggle');
+            const panel = document.getElementById('notifPanel');
+            const badge = document.getElementById('notifBadge');
+
+            if(bell && panel) {
+                bell.addEventListener('click', function(e) {
+                    if (e.target.closest('a')) return;
+                    panel.classList.toggle('show');
+                    
+                    if (panel.classList.contains('show') && badge) {
+                        fetch('{{ url_for("mark_notifications_read") }}', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        }).then(response => response.json())
+                          .then(data => {
+                              if(data.success) {
+                                  badge.style.display = 'none';
+                                  document.querySelectorAll('.notif-item.unread').forEach(item => {
+                                      item.classList.remove('unread');
+                                  });
+                              }
+                          });
+                    }
+                });
+                document.addEventListener('click', function(e) {
+                    if (!bell.contains(e.target)) panel.classList.remove('show');
+                });
+            }
+        });
+
+        // Hero Theme Color Logic
+        function updateHeroColor(color, element) {
+            document.documentElement.style.setProperty('--hero-bg', color);
+            localStorage.setItem('easyMed-hero-color', color);
+            
+            if (element && element.classList.contains('color-dot')) {
+                document.querySelectorAll('.color-dot').forEach(dot => dot.classList.remove('active'));
+                element.classList.add('active');
+            }
+        }
+
+        // Initialize Theme
+        (function initTheme() {
+            const savedColor = localStorage.getItem('easyMed-hero-color');
+            if (savedColor) {
+                document.documentElement.style.setProperty('--hero-bg', savedColor);
+                document.querySelectorAll('.color-dot').forEach(dot => {
+                    const bg = dot.style.background;
+                    if (bg.includes(savedColor) || savedColor.includes(bg)) {
+                        dot.classList.add('active');
+                    } else {
+                        dot.classList.remove('active');
+                    }
+                });
+            }
+        })();
+
+        // Mobile Sidebar Toggle Logic
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            const sidebar = document.querySelector('.sidebar');
+
+            if (sidebarToggle && sidebar && sidebarOverlay) {
+                sidebarToggle.addEventListener('click', function() {
+                    sidebar.classList.toggle('active');
+                    sidebarOverlay.classList.toggle('active');
+                });
+
+                sidebarOverlay.addEventListener('click', function() {
+                    sidebar.classList.remove('active');
+                    sidebarOverlay.classList.remove('active');
+                });
+
+                // Close sidebar when clicking a link on mobile
+                document.querySelectorAll('.nav-link').forEach(link => {
+                    link.addEventListener('click', () => {
+                        sidebar.classList.remove('active');
+                        sidebarOverlay.classList.remove('active');
+                    });
+                });
+            }
+        });
+    </script>
+            </div> <!-- End content-area -->
+        </div> <!-- End main-dashboard-content -->
+    </div> <!-- End main-wrapper -->
+
+    {% include 'diagnostic_viewer.html' %}
+    {% include 'chatbot.html' %}
+</body>
+</html>

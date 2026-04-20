@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - easyMed</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body {
+            background-color: #e0f2fe; /* Light sky blue fallback */
+            position: relative;
+        }
+        
+        /* Specific Registration Background styles */
+        .hospital-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            /* Using a combination of a CSS pattern and a large SVG to simulate a hospital building */
+            background: linear-gradient(to bottom, #bae6fd 0%, #e0f2fe 100%);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+        }
+
+        .hospital-illustration {
+            width: 120%;
+            min-width: 1000px;
+            height: auto;
+            opacity: 0.6;
+            margin-bottom: -5%;
+            filter: blur(8px); /* Blur effect requested by user */
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="hospital-bg">
+        <!-- SVG illustration of a hospital building -->
+        <svg class="hospital-illustration" viewBox="0 0 1000 400" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="bgrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#38bdf8"/>
+                    <stop offset="100%" stop-color="#0284c7"/>
+                </linearGradient>
+            </defs>
+            <!-- Background buildings -->
+            <rect x="100" y="150" width="150" height="250" fill="#94a3b8" />
+            <rect x="250" y="100" width="200" height="300" fill="#64748b" />
+            <rect x="750" y="120" width="180" height="280" fill="#94a3b8" />
+            
+            <!-- Main Hospital Building -->
+            <rect x="350" y="50" width="300" height="350" fill="url(#bgrad)" rx="10" />
+            <rect x="320" y="200" width="360" height="200" fill="#0ea5e9" rx="5" />
+            
+            <!-- White Cross Sign -->
+            <circle cx="500" cy="110" r="30" fill="white" />
+            <path d="M490 90 h20 v15 h15 v20 h-15 v15 h-20 v-15 h-15 v-20 h15 z" fill="#ef4444" />
+            
+            <!-- Windows (Left Wing) -->
+            <rect x="340" y="230" width="40" height="30" fill="white" opacity="0.8" rx="2" />
+            <rect x="390" y="230" width="40" height="30" fill="white" opacity="0.8" rx="2" />
+            <rect x="340" y="280" width="40" height="30" fill="white" opacity="0.8" rx="2" />
+            <rect x="390" y="280" width="40" height="30" fill="white" opacity="0.8" rx="2" />
+            
+            <!-- Windows (Center Tower) -->
+            <rect x="420" y="70" width="40" height="30" fill="white" opacity="0.6" rx="2" />
+            <rect x="420" y="120" width="40" height="30" fill="white" opacity="0.6" rx="2" />
+            <rect x="540" y="70" width="40" height="30" fill="white" opacity="0.6" rx="2" />
+            <rect x="540" y="120" width="40" height="30" fill="white" opacity="0.6" rx="2" />
+            
+            <!-- Entrance -->
+            <rect x="460" y="320" width="80" height="80" fill="#f8fafc" rx="5" />
+            <rect x="498" y="320" width="4" height="80" fill="#cbd5e1" />
+            <!-- Path -->
+            <path d="M460 400 L400 500 L600 500 L540 400 Z" fill="#e2e8f0" />
+        </svg>
+    </div>
+
+    <div class="container">
+        <div class="auth-card glass-panel">
+            <div class="auth-header">
+                <h1>Create Account</h1>
+                <p>Register as a new medical professional.</p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages" id="flash-container">
+                        {% for category, message in messages %}
+                            <div class="flash {{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            <div id="js-flash" class="flash-messages hidden"></div>
+
+            <form action="{{ url_for('register') }}" method="POST" id="registerForm">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" class="form-control" required placeholder="Choose a username" value="{{ username|default('') }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="profession">Profession</label>
+                    <select id="profession" name="profession" class="form-control" required>
+                        <option value="" disabled selected>Select your profession</option>
+                        <option value="Patient" {% if profession == 'Patient' %}selected{% endif %}>Patient</option>
+                        <option value="Rural Doctor" {% if profession == 'Rural Doctor' %}selected{% endif %}>Rural Doctor</option>
+                        <option value="Cardiologist" {% if profession == 'Cardiologist' %}selected{% endif %}>Cardiologist</option>
+                        <option value="Neurologist" {% if profession == 'Neurologist' %}selected{% endif %}>Neurologist</option>
+                        <option value="Dermatologist" {% if profession == 'Dermatologist' %}selected{% endif %}>Dermatologist</option>
+                        <option value="Oncologist" {% if profession == 'Oncologist' %}selected{% endif %}>Oncologist</option>
+                        <option value="Nephrologist" {% if profession == 'Nephrologist' %}selected{% endif %}>Nephrologist</option>
+                        <option value="Pulmonologist" {% if profession == 'Pulmonologist' %}selected{% endif %}>Pulmonologist</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="mobile">Mobile Number</label>
+                    <div class="input-with-button">
+                        <input type="tel" id="mobile" name="mobile" class="form-control" required placeholder="Enter mobile number" value="{{ mobile|default('') }}">
+                        <button type="button" class="btn btn-secondary" id="sendOtpBtn" onclick="sendOtp()">Send OTP</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" class="form-control" required placeholder="Create a password">
+                </div>
+
+                <div class="form-group otp-section" id="otpSection">
+                    <label for="otp">Enter OTP</label>
+                    <input type="text" id="otp" name="otp" class="form-control" placeholder="6-digit OTP">
+                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 5px;">Check server console for OTP simulation</p>
+                </div>
+
+                <button type="button" id="submitBtn" class="btn btn-primary" onclick="checkSubmittable()">Complete Registration</button>
+            </form>
+
+            <div class="auth-footer">
+                <p>Already have an account? <a href="{{ url_for('login') }}">Login here</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let otpSent = false;
+
+        function showFlash(message, type) {
+            const flashContainer = document.getElementById('js-flash');
+            flashContainer.innerHTML = `<div class="flash ${type}">${message}</div>`;
+            flashContainer.classList.remove('hidden');
+        }
+
+        async function sendOtp() {
+            const mobile = document.getElementById('mobile').value;
+            if (!mobile || mobile.length < 10) {
+                showFlash('Please enter a valid mobile number first.', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('sendOtpBtn');
+            const originalText = btn.innerText;
+            btn.innerText = 'Sending...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch("{{ url_for('send_registration_otp') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ mobile: mobile })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('otpSection').classList.add('active');
+                    document.getElementById('mobile').readOnly = true;
+                    showFlash('OTP sent successfully!', 'success');
+                    otpSent = true;
+                    btn.innerText = 'Sent ✓';
+                } else {
+                    showFlash(data.message || 'Failed to send OTP.', 'error');
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                showFlash('Error connecting to server.', 'error');
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        function checkSubmittable() {
+            const form = document.getElementById('registerForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            if (!otpSent) {
+                showFlash('Please verify your mobile number with OTP first.', 'error');
+                return;
+            }
+
+            const otp = document.getElementById('otp').value;
+            if (!otp) {
+                showFlash('Please enter the OTP.', 'error');
+                return;
+            }
+
+            form.submit();
+        }
+    </script>
+</body>
+</html>

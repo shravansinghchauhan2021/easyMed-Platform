@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant - easyMed</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        .ai-chat-container {
+            height: calc(100vh - 180px);
+            display: flex;
+            flex-direction: column;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+        }
+        #ai-input-full {
+            background: #f8fafc !important;
+            color: var(--text-dark) !important;
+            border: 1px solid #cbd5e1;
+            border-radius: 25px;
+            padding: 12px 20px;
+        }
+        #ai-input-full:focus {
+            background: white !important;
+            border-color: var(--primary-color);
+            box-shadow: none;
+        }
+        #ai-input-full::placeholder {
+            color: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- SIDEBAR (Reused) -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <i class="fa-solid fa-house-medical"></i>
+            <h3>easyMed</h3>
+        </div>
+        <ul class="nav-menu">
+            {% if session['profession'] == 'Patient' %}
+            <li class="nav-item">
+                <a href="{{ url_for('patient_dashboard') }}" class="nav-link">
+                    <i class="fa-solid fa-house-user"></i> Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('ai_assistant') }}" class="nav-link active">
+                    <i class="fa-solid fa-robot"></i> AI Assistant
+                </a>
+            </li>
+            {% else %}
+            <li class="nav-item">
+                <a href="{{ url_for('rural_dashboard' if session['profession'] == 'Rural Doctor' else 'specialist_dashboard') }}" class="nav-link">
+                    <i class="fa-solid fa-house-medical"></i> Dashboard
+                </a>
+            </li>
+            {% if session['profession'] == 'Rural Doctor' %}
+            <li class="nav-item">
+                <a href="{{ url_for('rural_dashboard') }}#add-patient-section" class="nav-link">
+                    <i class="fa-solid fa-user-plus"></i> Add Patient
+                </a>
+            </li>
+            {% else %}
+            <li class="nav-item">
+                <a href="{{ url_for('pending_requests') }}" class="nav-link">
+                    <i class="fa-solid fa-clipboard-list"></i> New Requests
+                </a>
+            </li>
+            {% endif %}
+            <li class="nav-item">
+                <a href="{{ url_for('my_patients') }}" class="nav-link">
+                    <i class="fa-solid {{ 'fa-user-doctor' if session['profession'] in SPECIALIST_ROLES else 'fa-users' }}"></i> 
+                    {{ 'My Cases' if session['profession'] in SPECIALIST_ROLES else 'My Patients' }}
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('active_chats') }}" class="nav-link">
+                    <i class="fa-solid fa-comments"></i> Chat
+                </a>
+            </li>
+            {% if session['profession'] == 'Rural Doctor' %}
+            <li class="nav-item">
+                <a href="{{ url_for('reports_view') }}" class="nav-link">
+                    <i class="fa-solid fa-file-medical"></i> Reports
+                </a>
+            </li>
+            {% endif %}
+            <li class="nav-item">
+                <a href="{{ url_for('case_history') }}" class="nav-link">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Case History
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('ai_assistant') }}" class="nav-link active">
+                    <i class="fa-solid fa-robot"></i> AI Assistant
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+        <div class="sidebar-footer">
+            <a href="{{ url_for('logout') }}" class="logout-link">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-wrapper">
+        <header class="top-header">
+            <div class="d-flex align-items-center gap-3">
+                <h4 class="m-0 fw-bold text-white">Neural AI Clinical Assistant</h4>
+            </div>
+        </header>
+
+        <div class="content-area">
+            <div class="ai-chat-container">
+                <div class="p-3 text-center border-bottom bg-white d-flex flex-column align-items-center justify-content-center shadow-sm z-1">
+                    <h5 class="text-dark fw-bold mb-1"><i class="fa-solid fa-robot text-primary me-2"></i> How can I help you today?</h5>
+                    <p class="text-muted mb-0" style="font-size:0.8rem;">Ask about neurological symptoms, patient data, or medical guidelines.</p>
+                </div>
+                
+                <div class="flex-grow-1 p-4 overflow-y-auto bg-light" id="ai-messages-full">
+                    <!-- Messages will appear here -->
+                    <div class="d-flex gap-3 mb-4">
+                        <div class="bg-primary text-white p-2 rounded-circle shadow-sm d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                            <i class="fa-solid fa-robot"></i>
+                        </div>
+                        <div class="bg-white p-3 rounded-4 shadow-sm text-dark border border-gray-100" style="max-width: 80%;">
+                            Hello! I am your Specialized Neurological Assistant. I can help you with case summaries, symptom guidance (like FAST protocol), and fetching patient data.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-4 bg-white border-top">
+                    <div class="input-group gap-2 align-items-center bg-light px-3 py-1 rounded-pill border">
+                        <input type="text" id="ai-input-full" class="form-control border-0 bg-transparent" placeholder="Type your clinical question here...">
+                        <button id="voiceFullBtn" class="text-primary border-0 bg-transparent px-2" title="Voice Input" style="font-size: 1.2rem;">
+                            <i class="fa-solid fa-microphone"></i>
+                        </button>
+                        <button class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center" id="ai-send-btn-full" style="width: 40px; height: 40px;"><i class="fa-solid fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('ai-send-btn-full').addEventListener('click', sendMessage);
+        document.getElementById('ai-input-full').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        function sendMessage() {
+            const input = document.getElementById('ai-input-full');
+            const query = input.value.trim();
+            if (!query) return;
+
+            // Add user message to UI
+            addMessage(query, 'user');
+            input.value = '';
+
+            fetch('{{ url_for("chatbot_query") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: query })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    addMessage(data.response, 'bot');
+                } else {
+                    addMessage("Error: " + data.error, 'bot');
+                }
+            });
+        }
+
+        function addMessage(text, side) {
+            const container = document.getElementById('ai-messages-full');
+            const div = document.createElement('div');
+            div.className = `d-flex gap-3 mb-4 ${side === 'user' ? 'flex-row-reverse' : ''}`;
+            
+            const icon = side === 'bot' ? '<i class="fa-solid fa-robot"></i>' : '<i class="fa-solid fa-user-doctor"></i>';
+            const bgColor = side === 'bot' ? '#ffffff' : 'var(--primary-color)';
+            const textColor = side === 'bot' ? 'var(--text-dark)' : 'white';
+            const border = side === 'bot' ? 'border: 1px solid #e2e8f0;' : '';
+            
+            div.innerHTML = `
+                <div class="${side === 'bot' ? 'bg-primary' : 'bg-success'} text-white p-2 rounded-circle shadow-sm d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; flex-shrink: 0;">
+                    ${icon}
+                </div>
+                </div>
+                <div style="background: ${bgColor}; padding: 1rem; border-radius: 1rem; color: ${textColor}; max-width: 80%; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); ${border}; font-size: 0.95rem;">
+                    ${marked.parse(text)}
+                </div>
+            `;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+    </script>
+    <script src="{{ url_for('static', filename='voice.js') }}"></script>
+</body>
+</html>

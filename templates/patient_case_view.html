@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Case Details - Patient Portal</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+    <style>
+        body { background-color: #f8fafc; }
+        
+        .chat-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+            overflow: hidden;
+            height: 600px;
+        }
+
+        .chat-messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background-color: #f1f5f9;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .message {
+            max-width: 85%;
+            margin-bottom: 5px;
+            min-width: 80px;
+        }
+
+        .message-mine {
+            align-self: flex-end;
+        }
+
+        .message-other {
+            align-self: flex-start;
+        }
+
+        .message-bubble {
+            padding: 12px 16px;
+            border-radius: 12px;
+            position: relative;
+            word-wrap: break-word;
+            text-align: left;
+        }
+
+        .bubble-specialist {
+            background-color: #ffffff;
+            color: #1e293b;
+            border-top-left-radius: 4px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .bubble-rural {
+            background-color: #dcfce7;
+            color: #166534;
+            border-top-right-radius: 4px;
+        }
+        
+        .message-timestamp {
+            font-size: 0.65rem;
+            opacity: 0.7;
+            text-align: right;
+            margin-top: 4px;
+        }
+        
+        .message-meta {
+            font-size: 0.75rem;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        /* Stepper for Patient View */
+        .patient-stepper {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+            padding: 20px 0;
+            margin-bottom: 30px;
+        }
+        .patient-stepper::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: #e2e8f0;
+            z-index: 1;
+            transform: translateY(-50%);
+        }
+        
+        /* Progress line segments */
+        .stepper-progress-bar {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            height: 4px;
+            background: #10b981;
+            z-index: 1;
+            transform: translateY(-50%);
+            transition: width 0.8s ease;
+        }
+        
+        .step {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 25%;
+        }
+        
+        .step-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #64748b;
+            border: 4px solid #f8fafc;
+            transition: all 0.3s ease;
+        }
+        
+        .step-label {
+            margin-top: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #64748b;
+            text-align: center;
+        }
+        
+        .step.active .step-icon {
+            background: #0ea5e9;
+            color: white;
+            box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.2);
+        }
+        .step.active .step-label { color: #0ea5e9; }
+        
+        .patient-stepper.progress-0 .stepper-progress-bar { width: 0%; }
+        .patient-stepper.progress-33 .stepper-progress-bar { width: 33%; }
+        .patient-stepper.progress-66 .stepper-progress-bar { width: 66%; }
+        .patient-stepper.progress-100 .stepper-progress-bar { width: 100%; }
+
+        .step.completed .step-icon {
+            background: #10b981;
+            color: white;
+        }
+        .step.completed .step-label { color: #10b981; }
+
+        .step.rejected .step-icon {
+            background: #ef4444;
+            color: white;
+        }
+        .step.rejected .step-label { color: #ef4444; }
+
+    </style>
+</head>
+<body>
+    <div class="hospital-pattern"></div>
+
+    <!-- Sidebar Layout -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <i class="fa-solid fa-house-medical"></i> Patient Portal
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a href="{{ url_for('patient_dashboard') }}" class="nav-link">
+                    <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </li>
+        </ul>
+        <div class="sidebar-footer">
+            <a href="{{ url_for('logout') }}" class="logout-link">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-wrapper">
+        <header class="top-header">
+            <div class="header-ecg"></div>
+            <div class="d-flex align-items-center gap-3 position-relative z-1">
+                <h4 class="m-0 fw-bold text-white"><i class="fa-solid fa-notes-medical me-2"></i>Case Details</h4>
+            </div>
+            <div class="header-user-info text-white">
+                <i class="fa-solid fa-user me-2"></i> {{ session['username'] }}
+            </div>
+        </header>
+
+        <div class="content-area pt-4">
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                  </div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="fw-bold m-0 text-dark">{{ patient['patient_name'] }}</h2>
+                    <p class="text-muted m-0">Submitted on: {{ patient['created_at'] if patient['created_at'] else 'Recently' }}</p>
+                </div>
+                
+                {% if patient['status'] == 'Completed' %}
+                <a href="{{ url_for('generate_report', patient_id=patient['id']) }}" class="btn btn-success fw-bold px-4 py-2 rounded-pill shadow-sm">
+                    <i class="fa-solid fa-download me-2"></i> Download Final Report
+                </a>
+                {% endif %}
+            </div>
+
+            <!-- Lifecycle Stepper -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-body px-5">
+                    <div class="patient-stepper {{ 'progress-100' if patient['status'] == 'Completed' else ('progress-66' if patient['status'] == 'In Consultation' else ('progress-33' if patient['status'] == 'Accepted' else 'progress-0')) }}">
+                        <!-- Progress Line -->
+                        <div class="stepper-progress-bar"></div>
+
+                        <!-- Step 1: Submited -->
+                        <div class="step {{ 'completed' if patient['status'] in ['Accepted', 'In Consultation', 'Completed'] else 'active' if patient['status'] == 'Pending' else '' }}">
+                            <div class="step-icon">
+                                {% if patient['status'] in ['Accepted', 'In Consultation', 'Completed'] %}
+                                    <i class="fa-solid fa-check"></i>
+                                {% else %}
+                                    <i class="fa-solid fa-file-medical"></i>
+                                {% endif %}
+                            </div>
+                            <div class="step-label">Submitted</div>
+                        </div>
+                        
+                        <!-- Step 2: Accepted -->
+                        <div class="step {{ 'completed' if patient['status'] in ['In Consultation', 'Completed'] else 'active' if patient['status'] == 'Accepted' else '' }}">
+                            <div class="step-icon">
+                                {% if patient['status'] in ['In Consultation', 'Completed'] %}
+                                    <i class="fa-solid fa-check"></i>
+                                {% else %}
+                                    <i class="fa-solid fa-user-doctor"></i>
+                                {% endif %}
+                            </div>
+                            <div class="step-label">Accepted</div>
+                        </div>
+                        
+                        <!-- Step 3: In Consultation -->
+                        <div class="step {{ 'completed' if patient['status'] == 'Completed' else 'active' if patient['status'] == 'In Consultation' else '' }}">
+                            <div class="step-icon">
+                                {% if patient['status'] == 'Completed' %}
+                                    <i class="fa-solid fa-check"></i>
+                                {% else %}
+                                    <i class="fa-solid fa-comments"></i>
+                                {% endif %}
+                            </div>
+                            <div class="step-label">In Consultation</div>
+                        </div>
+                        
+                        <!-- Step 4: Completed -->
+                        <div class="step {{ 'completed' if patient['status'] == 'Completed' else 'rejected' if patient['status'] == 'Rejected' else '' }}">
+                            <div class="step-icon">
+                                {% if patient['status'] == 'Rejected' %}
+                                    <i class="fa-solid fa-xmark"></i>
+                                {% else %}
+                                    <i class="fa-solid fa-check"></i>
+                                {% endif %}
+                            </div>
+                            <div class="step-label">{{ 'Rejected' if patient['status'] == 'Rejected' else 'Completed' }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <!-- Case Info Sidebar -->
+                <div class="col-lg-4">
+                    <div class="card border-0 shadow-sm rounded-4 mb-4">
+                        <div class="card-header bg-white border-bottom pt-3 pb-2">
+                            <h6 class="fw-bold m-0 text-primary"><i class="fa-solid fa-circle-info me-2"></i>Basic Information</h6>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item px-0 d-flex justify-content-between">
+                                    <span class="text-muted small">Age</span>
+                                    <span class="fw-bold">{{ patient['age'] }} Years</span>
+                                </li>
+                                <li class="list-group-item px-0 d-flex justify-content-between">
+                                    <span class="text-muted small">Gender</span>
+                                    <span class="fw-bold">{{ patient['gender'] }}</span>
+                                </li>
+                                <li class="list-group-item px-0 d-flex justify-content-between">
+                                    <span class="text-muted small">Target Specialty</span>
+                                    <span class="fw-bold text-dark">{{ patient['specialist_type'] }}</span>
+                                </li>
+                                <li class="list-group-item px-0">
+                                    <span class="text-muted small d-block mb-1">Chief Complaint</span>
+                                    <p class="m-0 small">{{ patient['problem_description'] }}</p>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="card border-0 shadow-sm rounded-4 mb-4">
+                        <div class="card-header bg-white border-bottom pt-3 pb-2">
+                            <h6 class="fw-bold m-0 text-primary"><i class="fa-solid fa-user-group me-2"></i>Medical Team</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3 border-bottom pb-2">
+                                <p class="text-muted small mb-1">Rural Doctor</p>
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-primary bg-opacity-10 text-primary rounded-circle p-2 me-2">
+                                        <i class="fa-solid fa-stethoscope"></i>
+                                    </div>
+                                    <span class="fw-bold">Dr. {{ rural_doctor['username'] }}</span>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-muted small mb-1">Assigned Specialist</p>
+                                {% if specialist %}
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-success bg-opacity-10 text-success rounded-circle p-2 me-2">
+                                        <i class="fa-solid fa-user-doctor"></i>
+                                    </div>
+                                    <span class="fw-bold">Dr. {{ specialist['username'] }}</span>
+                                </div>
+                                {% else %}
+                                <div class="text-muted small fst-italic">Waiting for assignment...</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat History Area -->
+                <div class="col-lg-8">
+                    <div class="chat-container">
+                        <div class="bg-white p-3 border-bottom d-flex justify-content-between align-items-center">
+                            <h5 class="m-0 fw-bold"><i class="fa-solid fa-comments me-2 text-primary"></i>Consultation Log</h5>
+                            <span class="badge bg-secondary">Read Only</span>
+                        </div>
+                        
+                        <div class="chat-messages" id="chat-messages">
+                            {% if patient['status'] == 'Pending' %}
+                                <div class="text-center mt-5">
+                                    <div class="bg-white d-inline-block p-4 rounded-4 shadow-sm border text-muted">
+                                        <i class="fa-solid fa-clock fa-3x text-warning mb-3 opacity-50"></i>
+                                        <h6 class="fw-bold text-dark">Waiting for Specialist</h6>
+                                        <p class="small m-0">A rural doctor has submitted your case. It is currently waiting to be reviewed.</p>
+                                    </div>
+                                </div>
+                            {% elif not messages %}
+                                <div class="text-center mt-5">
+                                    <div class="bg-white d-inline-block p-3 rounded-pill shadow-sm border text-muted small fw-bold">
+                                        <i class="fa-solid fa-lock me-2"></i>Consultation History (Encrypted)
+                                    </div>
+                                    <p class="small text-muted mt-2">No messages have been exchanged yet.</p>
+                                </div>
+                            {% else %}
+                                {% for msg in messages %}
+                                    {% set bubble_color = 'bubble-rural' if msg['profession'] == 'Rural Doctor' else 'bubble-specialist' %}
+                                    <!-- In patient view, all messages are 'other' since patient cannot send -->
+                                    <div class="message message-other d-flex flex-column">
+                                        <div class="message-meta mb-1 ms-2">
+                                            Dr. {{ msg['username'] }} ({{ msg['profession'] }})
+                                        </div>
+                                        
+                                        <div class="message-bubble {{ bubble_color }} shadow-sm">
+                                            {% if msg['message'] %}
+                                                <div class="mb-1">{{ msg['message'] }}</div>
+                                            {% endif %}
+                                            {% if msg['file_path'] %}
+                                                <div class="mt-2 text-center p-2 bg-light rounded">
+                                                    <i class="fa-solid fa-paperclip me-2"></i> Attachment Shared
+                                                </div>
+                                            {% endif %}
+                                            <div class="message-timestamp">
+                                                {{ msg['timestamp'] }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        
+                        {% if patient['status'] == 'Completed' %}
+                        <div class="p-3 bg-success bg-opacity-10 border-top text-center text-success">
+                            <i class="fa-solid fa-check-circle me-1"></i> This consultation is completed. Download your report above.
+                        </div>
+                        {% else %}
+                        <div class="p-3 bg-light border-top text-center text-muted small">
+                            <i class="fa-solid fa-eye me-1"></i> You are viewing this consultation in read-only mode.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Scroll to bottom of chat
+        window.onload = function() {
+            var chatBox = document.getElementById("chat-messages");
+            chatBox.scrollTop = chatBox.scrollHeight;
+        };
+    </script>
+    {% include 'chatbot.html' %}
+</body>
+</html>

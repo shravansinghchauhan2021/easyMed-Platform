@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Dashboard - Patient Portal</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard_enhancements.css') }}">
+    <!-- Professional Loader Assets -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='loader.css') }}">
+    <script src="{{ url_for('static', filename='loader.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='theme-toggle.js') }}" defer></script>
+    <style>
+        body { background-color: #f8fafc; }
+        .patient-card {
+            border: none;
+            border-radius: 12px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+        .patient-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+        }
+        .status-badge {
+            font-size: 0.8rem;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+        .status-pending { background-color: #fef3c7; color: #d97706; }
+        .status-accepted { background-color: #e0e7ff; color: #4338ca; }
+        .status-consultation { background-color: #ffedd5; color: #ea580c; }
+        .status-completed { background-color: #dcfce7; color: #166534; }
+        .status-rejected { background-color: #fee2e2; color: #b91c1c; }
+        
+        .risk-badge {
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .risk-high { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+        .risk-medium { background-color: #fef3c7; color: #d97706; border: 1px solid #fcd34d; }
+        .risk-low { background-color: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+    </style>
+</head>
+<body>
+    {% include 'loader.html' %}
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <div class="hospital-pattern"></div>
+
+    <!-- Sidebar Layout -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <i class="fa-solid fa-house-medical"></i> Patient Portal
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a href="{{ url_for('patient_dashboard') }}" class="nav-link active">
+                    <i class="fa-solid fa-house-user"></i> My Cases
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('ai_assistant') }}" class="nav-link">
+                    <i class="fa-solid fa-robot"></i> AI Assistant
+                </a>
+            </li>
+        </ul>
+        <div class="sidebar-footer">
+            <a href="{{ url_for('logout') }}" class="logout-link">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-wrapper">
+        <!-- TOP HEADER (Always at the top) -->
+        <header class="top-header">
+            <button class="menu-toggle d-lg-none me-3" id="sidebarToggle">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <div class="header-ecg"></div>
+            <div class="d-flex align-items-center gap-3 position-relative z-1">
+                <h4 class="m-0 fw-bold text-white"><i class="fa-solid fa-user-injured me-2"></i>Patient Portal</h4>
+            </div>
+            <div class="header-user-info text-white">
+                <i class="fa-solid fa-user me-2"></i> {{ session['username'] }}
+                
+                <button class="theme-toggle-btn ms-3" id="themeToggle" title="Toggle Dark/Light Mode">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+                <div class="notification-bell text-white" id="notifDropdownToggle" style="cursor: pointer; position: relative;">
+                    <i class="fa-solid fa-bell"></i>
+                    <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle {{ 'd-none' if unread_count == 0 }}" id="notifBadge"></span>
+                    
+                    <div class="notifications-panel" id="notifPanel">
+                        <div class="panel-header bg-light text-dark p-2 border-bottom">
+                            <h6 class="m-0 fw-bold">Recent Notifications</h6>
+                        </div>
+                        <div class="panel-body p-2" style="max-height: 300px; overflow-y: auto;">
+                            {% if notifications %}
+                                {% for notif in notifications %}
+                                <a href="{{ url_for('handle_notification', notif_id=notif['id']) }}" class="notif-item {{ 'unread' if not notif['read_status'] else '' }}">
+                                    <div class="notif-icon">
+                                        <i class="fa-solid fa-circle-info"></i>
+                                    </div>
+                                    <div class="notif-content">
+                                        <div class="text-dark small">{{ notif['message'] }}</div>
+                                        <div class="text-muted" style="font-size: 0.7rem;">{{ notif['timestamp'] }}</div>
+                                    </div>
+                                </a>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-center py-4 text-muted small">No recent notifications</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Animated Hero Section -->
+        <section class="hero-enhancement" id="hero">
+            <div class="hero-theme-controls">
+                <span class="theme-label">Theme color</span>
+                <div class="color-presets">
+                    <div class="color-dot active" style="background: linear-gradient(135deg, #0ea5e9, #22d3ee);" onclick="updateHeroColor('linear-gradient(135deg, #0ea5e9, #22d3ee)', this)"></div>
+                    <div class="color-dot" style="background: linear-gradient(135deg, #6366f1, #a855f7);" onclick="updateHeroColor('linear-gradient(135deg, #6366f1, #a855f7)', this)"></div>
+                    <div class="color-dot" style="background: linear-gradient(135deg, #10b981, #34d399);" onclick="updateHeroColor('linear-gradient(135deg, #10b981, #34d399)', this)"></div>
+                    <div class="color-dot" style="background: linear-gradient(135deg, #f43f5e, #fb7185);" onclick="updateHeroColor('linear-gradient(135deg, #f43f5e, #fb7185)', this)"></div>
+                    <div class="custom-picker-wrapper" title="Choose custom color">
+                        <input type="color" id="hero-color-picker" oninput="updateHeroColor(this.value, this)">
+                    </div>
+                </div>
+            </div>
+
+            <div class="hero-content">
+                <div class="hero-text-container">
+                    <h1 class="hero-title">Welcome to easyMed</h1>
+                    <p class="hero-subtitle">Your Intelligent Multi-Specialty Telemedicine Platform</p>
+                    <ul class="hero-features">
+                        <li><i class="fa-solid fa-circle-check"></i> Real-time doctor consultation</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Multi-specialist system</li>
+                        <li><i class="fa-solid fa-circle-check"></i> AI-powered chatbot</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Medical imaging analysis</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Patient case tracking</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Smart routing and analytics</li>
+                    </ul>
+                </div>
+                <div class="hero-illustration">
+                    <img src="{{ url_for('static', filename='images/doctor_illustration.png') }}" alt="Medical Professional">
+                </div>
+            </div>
+            <a href="#patient-content" class="scroll-indicator">
+                <i class="fa-solid fa-chevron-down"></i>
+            </a>
+        </section>
+
+        <div id="patient-content" class="p-4">
+
+        <div class="content-area pt-4">
+            <h2 class="fw-bold mb-4 text-dark">My Medical Cases</h2>
+            
+            {% if patients %}
+                <div class="row g-4">
+                {% for p in patients %}
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card patient-card h-100 shadow-sm border" onclick="window.location.href='{{ url_for('patient_case_view', patient_id=p['id']) }}';">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <h5 class="fw-bold m-0 text-dark">{{ p['specialist_type'] }} Consultation</h5>
+                                    
+                                    {% if p['status'] == 'Pending' %}
+                                        <span class="status-badge status-pending"><i class="fa-solid fa-clock me-1"></i> Pending</span>
+                                    {% elif p['status'] == 'Accepted' %}
+                                        <span class="status-badge status-accepted"><i class="fa-solid fa-user-doctor me-1"></i> Accepted</span>
+                                    {% elif p['status'] == 'In Consultation' %}
+                                        <span class="status-badge status-consultation"><i class="fa-solid fa-comments me-1"></i> Live</span>
+                                    {% elif p['status'] == 'Completed' %}
+                                        <span class="status-badge status-completed"><i class="fa-solid fa-check-circle me-1"></i> Completed</span>
+                                    {% else %}
+                                        <span class="status-badge status-rejected"><i class="fa-solid fa-times-circle me-1"></i> {{ p['status'] }}</span>
+                                    {% endif %}
+                                </div>
+                                
+                                <p class="text-muted small mb-3 text-truncate">{{ p['problem_description'] }}</p>
+                                
+                                <div class="mb-3">
+                                    <p class="mb-1 small"><i class="fa-solid fa-hospital-user text-muted me-2"></i> <strong>Submitted By:</strong> Dr. {{ p['rural_doctor_name'] }}</p>
+                                    <p class="mb-0 small"><i class="fa-solid fa-stethoscope text-muted me-2"></i> <strong>Specialist:</strong> {% if p['specialist_name'] %}Dr. {{ p['specialist_name'] }}{% else %}<span class="text-muted fst-italic">Waiting for assignment</span>{% endif %}</p>
+                                </div>
+                                
+                                <div>
+                                    <!-- Risk Level -->
+                                    {% if p['risk_level'] == 'High' %}
+                                        <span class="risk-badge risk-high"><i class="fa-solid fa-triangle-exclamation"></i> High Risk</span>
+                                    {% elif p['risk_level'] == 'Medium' %}
+                                        <span class="risk-badge risk-medium"><i class="fa-solid fa-circle-exclamation"></i> Medium Risk</span>
+                                    {% else %}
+                                        <span class="risk-badge risk-low"><i class="fa-solid fa-check-circle"></i> Low Risk</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="card-footer bg-white border-top-0 pt-0 pb-3 text-end">
+                                <span class="text-primary small fw-bold">View Details <i class="fa-solid fa-arrow-right ms-1"></i></span>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fa-solid fa-folder-open fa-3x text-muted mb-3 opacity-50"></i>
+                    <h5 class="text-muted">No Cases Found</h5>
+                    <p class="text-muted small">You don't have any medical cases linked to your account yet.</p>
+                </div>
+            {% endif %}
+        </div> <!-- End patient-content p-4 -->
+
+        <!-- Bottom Wellness Section -->
+        <section class="wellness-section">
+            <h2 class="wellness-title">Healthy Living Tips</h2>
+            <div class="wellness-grid">
+                <div class="wellness-card">
+                    <img src="{{ url_for('static', filename='images/exercise.png') }}" alt="Exercise">
+                    <div class="wellness-card-content">
+                        <p class="wellness-card-text">Physical Activity for Longevity</p>
+                        <ul class="wellness-details-list text-start">
+                            <li><i class="fa-solid fa-check"></i> Aim for 150 minutes of moderate aerobic activity weekly.</li>
+                            <li><i class="fa-solid fa-check"></i> Daily walking reduces current risk of stroke and heart disease.</li>
+                            <li><i class="fa-solid fa-check"></i> Incorporate strength training twice a week for muscle health.</li>
+                            <li><i class="fa-solid fa-check"></i> Activity improves mental clarity and reduces clinical brain fog.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="wellness-card">
+                    <img src="{{ url_for('static', filename='images/healthy_food.png') }}" alt="Healthy Food">
+                    <div class="wellness-card-content">
+                        <p class="wellness-card-text">Nutritional Balance & Vitality</p>
+                        <ul class="wellness-details-list text-start">
+                            <li><i class="fa-solid fa-pepper-hot"></i> Prioritize whole grains, lean proteins, and leafy greens.</li>
+                            <li><i class="fa-solid fa-pepper-hot"></i> Minimize processed sugars to maintain steady energy levels.</li>
+                            <li><i class="fa-solid fa-pepper-hot"></i> Hydrate with at least 8-10 glasses of clean water daily.</li>
+                            <li><i class="fa-solid fa-pepper-hot"></i> Antioxidant-rich foods support rapid cellular repair.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="wellness-card">
+                    <img src="{{ url_for('static', filename='images/meditation.png') }}" alt="Meditation">
+                    <div class="wellness-card-content">
+                        <p class="wellness-card-text">Mindfulness & Mental Peace</p>
+                        <ul class="wellness-details-list text-start">
+                            <li><i class="fa-solid fa-heart-pulse"></i> Practice deep breathing for 10 minutes every single day.</li>
+                            <li><i class="fa-solid fa-heart-pulse"></i> Engaging with nature significantly lowers baseline cortisol.</li>
+                            <li><i class="fa-solid fa-heart-pulse"></i> Maintain healthy work-life balance to avoid burnout risk.</li>
+                            <li><i class="fa-solid fa-heart-pulse"></i> Regular breaks improve overall cognitive focus and clarity.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="wellness-card">
+                    <img src="{{ url_for('static', filename='images/sleep.png') }}" alt="Sleep">
+                    <div class="wellness-card-content">
+                        <p class="wellness-card-text">Restorative Sleep & Recovery</p>
+                        <ul class="wellness-details-list text-start">
+                            <li><i class="fa-solid fa-moon"></i> Consistent 7-9 hours of sleep regulates immune function.</li>
+                            <li><i class="fa-solid fa-moon"></i> Avoid blue light from screens 1 hour before scheduled bed.</li>
+                            <li><i class="fa-solid fa-moon"></i> Maintain a dark, cool, quiet environment for deep rest.</li>
+                            <li><i class="fa-solid fa-moon"></i> Quality sleep is crucial for neuro-regenerative processes.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div> <!-- End main-wrapper -->
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Hero Theme Color Logic
+        function updateHeroColor(color, element) {
+            document.documentElement.style.setProperty('--hero-bg', color);
+            localStorage.setItem('easyMed-hero-color', color);
+            
+            if (element && element.classList.contains('color-dot')) {
+                document.querySelectorAll('.color-dot').forEach(dot => dot.classList.remove('active'));
+                element.classList.add('active');
+            }
+        }
+
+        // Initialize Theme
+        (function initTheme() {
+            const savedColor = localStorage.getItem('easyMed-hero-color');
+            if (savedColor) {
+                document.documentElement.style.setProperty('--hero-bg', savedColor);
+                document.querySelectorAll('.color-dot').forEach(dot => {
+                    const bg = dot.style.background;
+                    if (bg.includes(savedColor) || savedColor.includes(bg)) {
+                        dot.classList.add('active');
+                    } else {
+                        dot.classList.remove('active');
+                    }
+                });
+            }
+        })();
+
+        // Mobile Sidebar Toggle Logic
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            const sidebar = document.querySelector('.sidebar');
+
+            if (sidebarToggle && sidebar && sidebarOverlay) {
+                sidebarToggle.addEventListener('click', function() {
+                    sidebar.classList.toggle('active');
+                    sidebarOverlay.classList.toggle('active');
+                });
+
+                sidebarOverlay.addEventListener('click', function() {
+                    sidebar.classList.remove('active');
+                    sidebarOverlay.classList.remove('active');
+                });
+
+                // Close sidebar when clicking a link on mobile
+                document.querySelectorAll('.nav-link').forEach(link => {
+                    link.addEventListener('click', () => {
+                        sidebar.classList.remove('active');
+                        sidebarOverlay.classList.remove('active');
+                    });
+                });
+            }
+        });
+    </script>
+    {% include 'chatbot.html' %}
+</body>
+</html>

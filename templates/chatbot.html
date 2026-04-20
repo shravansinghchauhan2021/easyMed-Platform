@@ -1,0 +1,32 @@
+<!-- AI Chatbot UI Component -->
+<link rel="stylesheet" href="{{ url_for('static', filename='chatbot.css') }}">
+
+<div class="chatbot-fab" id="chatbotFab" title="AI Assistant">
+    <i class="fa-solid fa-robot"></i>
+</div>
+
+<div class="chatbot-window" id="chatbotWindow">
+    <div class="chatbot-header">
+        <h6><i class="fa-solid fa-robot me-2"></i>HealthSync AI</h6>
+        <button class="btn btn-sm text-white border-0" id="closeChatbot"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="chatbot-messages" id="chatbotMessages">
+        <div class="bot-msg shadow-sm">
+            Hello! I am your HealthSync assistant. I can help you find patient data, summarize conversations, or answer medical questions.
+        </div>
+    </div>
+    <div class="typing-indicator" id="chatbotTyping">
+        <span></span><span></span><span></span>
+    </div>
+    <div class="chatbot-input">
+        <input type="hidden" id="chatbotPatientId" value="{{ patient.id if patient else '' }}">
+        <input type="text" id="chatbotInput" placeholder="Ask about a patient or treatment...">
+        <button id="voiceChatbotBtn" class="text-primary border-0 bg-transparent me-2" title="Voice Input" style="font-size: 1.1rem;">
+            <i class="fa-solid fa-microphone"></i>
+        </button>
+        <button id="chatbotSend"><i class="fa-solid fa-paper-plane"></i></button>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='chatbot.js') }}"></script>
+<script src="{{ url_for('static', filename='voice.js') }}"></script>

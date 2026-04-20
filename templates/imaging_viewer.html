@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Medical Imaging Viewer - Case #{{ patient['id'] }}</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Inter', sans-serif; }
+        .viewer-header { background-color: #1e293b; padding: 15px 25px; border-bottom: 1px solid #334155; }
+        
+        .dicom-viewport { 
+            width: 100%; 
+            height: calc(100vh - 140px); 
+            background-color: black; 
+            position: relative; 
+            border: 1px solid #334155;
+            border-radius: 8px;
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+        }
+
+        .dicom-controls {
+            padding: 15px;
+            background-color: #1e293b;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .control-btn {
+            background-color: #334155;
+            color: #cbd5e1;
+            border: 1px solid #475569;
+            transition: all 0.2s;
+        }
+        
+        .control-btn:hover, .control-btn.active {
+            background-color: #0ea5e9;
+            color: white;
+            border-color: #0284c7;
+        }
+
+        .image-list {
+            max-height: calc(100vh - 140px);
+            overflow-y: auto;
+            background: #1e293b;
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .series-item {
+            background: #334155;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 4px solid transparent;
+        }
+
+        .series-item:hover, .series-item.active {
+            background: #475569;
+            border-left-color: #0ea5e9;
+        }
+        
+        .waveform-container {
+            width: 100%;
+            height: calc(100vh - 140px);
+            background: #fff;
+            border-radius: 8px;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="viewer-header d-flex justify-content-between align-items-center">
+        <div>
+            <h4 class="m-0 fw-bold"><i class="fa-solid fa-x-ray me-2 text-info"></i> Medical Imaging Viewer</h4>
+            <span class="text-muted small">Case #{{ patient['id'] }} - {{ patient['patient_name'] }}</span>
+        </div>
+        <div>
+            <button class="btn btn-outline-light btn-sm me-2" onclick="window.close()">
+                <i class="fa-solid fa-times me-1"></i> Close Viewer
+            </button>
+        </div>
+    </div>
+
+    <div class="container-fluid py-3">
+        <ul class="nav nav-pills mb-3" id="imagingTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#dicomTab" type="button">DICOM (CT/MRI)</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#eegTab" type="button">EEG Data</button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- DICOM Tab -->
+            <div class="tab-pane fade show active" id="dicomTab">
+                <div class="row">
+                    <div class="col-md-2">
+                        <div class="image-list">
+                            <h6 class="text-info fw-bold border-bottom border-secondary pb-2 mb-3">Available Scans</h6>
+                            {% set dicom_files = images | selectattr('modality', '!=', 'EEG') | list %}
+                            {% if dicom_files %}
+                                {% for img in dicom_files %}
+                                    <div class="series-item" onclick="loadDicom('{{ url_for('imaging_file', filename=img['file_path']) }}', this)">
+                                        <div class="fw-bold small text-white"><i class="fa-solid fa-file-medical me-2"></i>{{ img['modality'] }}</div>
+                                        <div class="text-muted" style="font-size: 0.75rem;">Seq: {{ img['sequence_type'] }}<br>{{ img['uploaded_at'] }}</div>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="text-muted small p-2">No CT/MRI scans uploaded.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-7">
+                        <div class="dicom-controls d-flex gap-2 align-items-center flex-wrap">
+                            <span class="text-muted small me-2 fw-bold">Tools:</span>
+                            <button class="btn control-btn btn-sm active" onclick="setTool('Wwwc', this)"><i class="fa-solid fa-circle-half-stroke me-1"></i> Window/Level</button>
+                            <button class="btn control-btn btn-sm" onclick="setTool('Pan', this)"><i class="fa-solid fa-arrows-up-down-left-right me-1"></i> Pan</button>
+                            <button class="btn control-btn btn-sm" onclick="setTool('Zoom', this)"><i class="fa-solid fa-magnifying-glass me-1"></i> Zoom</button>
+                            <button class="btn control-btn btn-sm" onclick="setTool('Length', this)"><i class="fa-solid fa-ruler me-1"></i> Measure</button>
+                            <div class="ms-auto d-flex gap-2">
+                                <button class="btn btn-outline-warning btn-sm fw-bold shadow-sm" onclick="resetViewport()"><i class="fa-solid fa-rotate-left me-1"></i> Reset View</button>
+                                <button class="btn btn-outline-info btn-sm" onclick="applyPreset('brain')">Brain Window</button>
+                                <button class="btn btn-outline-info btn-sm" onclick="applyPreset('bone')">Bone Window</button>
+                            </div>
+                        </div>
+                        
+                        <div id="dicomImage" class="dicom-viewport" oncontextmenu="return false" style="position: relative;">
+                            <!-- Heatmap Overlay -->
+                            <div id="aiHeatmapOverlay" class="d-none" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; background: radial-gradient(circle at 60% 40%, rgba(255, 0, 0, 0.4) 0%, rgba(255, 0, 0, 0) 40%); z-index: 10;"></div>
+                            <div id="dicomLoader" class="position-absolute top-50 start-50 translate-middle text-center d-none">
+                                <div class="spinner-border text-info" role="status"></div>
+                                <div class="mt-2 small text-light fw-bold">Loading Image...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <div class="ai-analysis-panel bg-dark p-3 rounded h-100 border border-secondary border-opacity-50">
+                            <h6 class="text-warning fw-bold border-bottom border-warning pb-2 mb-3"><i class="fa-solid fa-microchip me-2"></i>AI Scan Analysis</h6>
+                            
+                            <div id="aiAnalysisEmpty" class="text-center py-4">
+                                <i class="fa-solid fa-robot fa-3x text-muted mb-3 opacity-50"></i>
+                                <p class="text-muted small">Select a scan and run AI analysis to detect abnormalities.</p>
+                                <button class="btn btn-warning btn-sm fw-bold px-4 w-100 mt-2 shadow-sm" onclick="runAiAnalysis()">
+                                    <i class="fa-solid fa-bolt me-1"></i> Analyze Scan
+                                </button>
+                            </div>
+
+                            <div id="aiAnalysisLoading" class="text-center py-4 d-none">
+                                <div class="spinner-border text-warning mb-3" role="status"></div>
+                                <p class="text-warning small fw-bold">Neural Engine Processing...</p>
+                            </div>
+
+                            <div id="aiAnalysisResult" class="d-none">
+                                <div class="alert alert-danger py-2 px-3 mb-3 border-0 shadow-sm" style="background-color: #2b1d1d;">
+                                    <div class="small fw-bold text-danger text-uppercase mb-1 opacity-75">Detection Map</div>
+                                    <div class="fw-bold text-white" style="font-size:1.1rem;" id="aiPredictionText">Possible Stroke detected</div>
+                                </div>
+                                <div class="mb-3 bg-secondary bg-opacity-25 rounded p-2">
+                                    <div class="form-check form-switch custom-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="heatmapToggle" onchange="toggleHeatmap(this)">
+                                        <label class="form-check-label text-white small ms-1" for="heatmapToggle">Overlay AI Heatmap</label>
+                                    </div>
+                                </div>
+                                <div class="bg-secondary bg-opacity-25 rounded p-2 mb-3">
+                                    <div class="small fw-bold text-muted text-uppercase mb-1">Generated Report Summary</div>
+                                    <div class="small text-white" id="aiReportText" style="white-space: pre-wrap; font-family: monospace;"></div>
+                                </div>
+                                
+                                <button class="btn btn-outline-warning btn-sm w-100" onclick="downloadAiReport()">
+                                    <i class="fa-solid fa-download me-1"></i> Download AI Report
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- EEG Tab -->
+            <div class="tab-pane fade" id="eegTab">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="image-list">
+                            <h6 class="text-warning fw-bold border-bottom border-secondary pb-2 mb-3">EEG Recordings</h6>
+                            {% set eeg_files = images | selectattr('modality', '==', 'EEG') | list %}
+                            {% if eeg_files %}
+                                {% for img in eeg_files %}
+                                    <div class="series-item" onclick="loadEEG('{{ url_for('imaging_file', filename=img['file_path']) }}', this)">
+                                        <div class="fw-bold small text-white"><i class="fa-solid fa-wave-square me-2"></i>{{ img['modality'] }}</div>
+                                        <div class="text-muted" style="font-size: 0.75rem;">{{ img['uploaded_at'] }}</div>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="text-muted small p-2">No EEG data uploaded.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-9">
+                        <div class="waveform-container">
+                            <h5 class="text-dark fw-bold mb-3">EEG Signal Visualization</h5>
+                            <canvas id="eegChart"></canvas>
+                            <div id="eegLoader" class="text-center mt-5 text-muted d-none">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <div class="mt-2 small fw-bold">Parsing Data...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cornerstone Dependencies (Pinned to stable versions) -->
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    <script src="https://unpkg.com/cornerstone-core@2.3.0/dist/cornerstone.min.js"></script>
+    <script src="https://unpkg.com/cornerstone-math@0.1.9/dist/cornerstoneMath.min.js"></script>
+    <script src="https://unpkg.com/cornerstone-tools@3.3.0/dist/cornerstoneTools.min.js"></script>
+    <script src="https://unpkg.com/dicom-parser@1.8.9/dist/dicomParser.min.js"></script>
+    <script src="https://unpkg.com/cornerstone-wado-image-loader@3.3.1/dist/cornerstoneWADOImageLoader.min.js"></script>
+    
+    <!-- Chart.js for EEG -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // --- Cornerstone Init ---
+        cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
+        cornerstoneWADOImageLoader.external.dicomParser = dicomParser;
+
+        // Initialize WebWorkers explicitly for v3.3.1
+        const config = {
+            webWorkerPath: 'https://unpkg.com/cornerstone-wado-image-loader@3.3.1/dist/cornerstoneWADOImageLoaderWebWorker.min.js',
+            taskConfiguration: {
+                decodeTask: {
+                    codecsPath: 'https://unpkg.com/cornerstone-wado-image-loader@3.3.1/dist/cornerstoneWADOImageLoaderCodecs.min.js'
+                }
+            }
+        };
+        cornerstoneWADOImageLoader.webWorkerManager.initialize(config);
+
+        cornerstoneTools.external.cornerstone = cornerstone;
+        cornerstoneTools.external.Hammer = Hammer;
+        cornerstoneTools.external.cornerstoneMath = cornerstoneMath;
+        cornerstoneTools.init({
+            mouseEnabled: true,
+            touchEnabled: true,
+            showSVGCursors: true
+        });
+
+        const element = document.getElementById('dicomImage');
+        cornerstone.enable(element);
+
+        // Add tools globally once
+        cornerstoneTools.addTool(cornerstoneTools.WwwcTool);
+        cornerstoneTools.addTool(cornerstoneTools.PanTool);
+        cornerstoneTools.addTool(cornerstoneTools.ZoomTool);
+        cornerstoneTools.addTool(cornerstoneTools.LengthTool);
+
+        let currentTool = 'Wwwc'; // Default to windowing
+
+        function loadDicom(url, el) {
+            document.querySelectorAll('#dicomTab .series-item').forEach(i => i.classList.remove('active'));
+            if(el) el.classList.add('active');
+            
+            document.getElementById('dicomLoader').classList.remove('d-none');
+            
+            // Generate absolute URL for wadouri scheme
+            const absoluteUrl = window.location.origin + url;
+            const imageId = 'wadouri:' + absoluteUrl;
+            
+            cornerstone.loadImage(imageId).then(function(image) {
+                document.getElementById('dicomLoader').classList.add('d-none');
+                cornerstone.displayImage(element, image);
+                
+                // Set default tool
+                setTool('Wwwc', document.querySelector('.control-btn.active') || document.querySelector('.control-btn'));
+            }).catch(function(err) {
+                document.getElementById('dicomLoader').classList.add('d-none');
+                alert("Error loading DICOM image. Make sure it's a valid DICOM file. Check browser console for details.");
+                console.error("Cornerstone Error:", err);
+            });
+        }
+
+        function setTool(toolName, btnElement) {
+            currentTool = toolName;
+            
+            // Set all to passive first
+            cornerstoneTools.setToolPassive('Wwwc');
+            cornerstoneTools.setToolPassive('Pan');
+            cornerstoneTools.setToolPassive('Zoom');
+            cornerstoneTools.setToolPassive('Length');
+            
+            // Set target to active for Left Click
+            cornerstoneTools.setToolActive(toolName, { mouseButtonMask: 1 });
+            
+            if (btnElement) {
+                document.querySelectorAll('.control-btn').forEach(btn => btn.classList.remove('active'));
+                btnElement.classList.add('active');
+            }
+        }
+
+        function applyPreset(preset) {
+            const viewport = cornerstone.getViewport(element);
+            if (!viewport) return;
+            
+            if (preset === 'brain') {
+                viewport.voi.windowWidth = 80;
+                viewport.voi.windowCenter = 40;
+            } else if (preset === 'bone') {
+                viewport.voi.windowWidth = 2000;
+                viewport.voi.windowCenter = 300;
+            }
+            cornerstone.setViewport(element, viewport);
+        }
+
+        function resetViewport() {
+            try {
+                // Reset the panning, zoom, windowing, and rotation to image defaults
+                cornerstone.reset(element);
+                
+                // Extra: Clear any measurement lines drawn with LengthTool
+                cornerstoneTools.clearToolState(element, 'Length');
+                cornerstone.updateImage(element);
+            } catch (e) {
+                console.warn('Could not reset viewport fully:', e);
+            }
+        }
+
+        // --- AI Analysis Logic ---
+        function runAiAnalysis() {
+            document.getElementById('aiAnalysisEmpty').classList.add('d-none');
+            document.getElementById('aiAnalysisResult').classList.add('d-none');
+            document.getElementById('aiAnalysisLoading').classList.remove('d-none');
+            
+            fetch(`/api/analyze_scan/{{ patient['id'] }}`, {
+                method: 'POST'
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('aiAnalysisLoading').classList.add('d-none');
+                if(data.success) {
+                    document.getElementById('aiAnalysisResult').classList.remove('d-none');
+                    document.getElementById('aiPredictionText').innerHTML = marked.parse(data.prediction);
+                    document.getElementById('aiReportText').innerHTML = marked.parse(data.report);
+                    // Store report text globally for download
+                    window.currentAiReport = data.report;
+                    
+                    // Alert the specialist chat logic that an analysis was run (if socket exists)
+                    if(typeof socket !== 'undefined') {
+                        socket.emit('scan_analyzed', { patient_id: {{ patient['id'] }} });
+                    }
+                } else {
+                    alert('Analysis failed: ' + data.message);
+                    document.getElementById('aiAnalysisEmpty').classList.remove('d-none');
+                }
+            })
+            .catch(err => {
+                document.getElementById('aiAnalysisLoading').classList.add('d-none');
+                alert('Network error during AI analysis');
+                document.getElementById('aiAnalysisEmpty').classList.remove('d-none');
+            });
+        }
+
+        function toggleHeatmap(checkbox) {
+            const overlay = document.getElementById('aiHeatmapOverlay');
+            if(checkbox.checked) {
+                overlay.classList.remove('d-none');
+            } else {
+                overlay.classList.add('d-none');
+            }
+        }
+
+        function downloadAiReport() {
+            if(!window.currentAiReport) return;
+            const blob = new Blob([window.currentAiReport], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `AI_Scan_Report_Case_{{ patient['id'] }}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        }
+
+        // Handle Window resize
+        window.addEventListener('resize', function() {
+            cornerstone.resize(element);
+        });
+
+        // --- EEG Chart Logic (Mock data parser for CSVs) ---
+        let eegChartInstance = null;
+        function loadEEG(url, el) {
+            document.querySelectorAll('#eegTab .series-item').forEach(i => i.classList.remove('active'));
+            if(el) el.classList.add('active');
+            
+            document.getElementById('eegLoader').classList.remove('d-none');
+            
+            // In a real app we'd parse EDF via edf.js, but here we simulate a signal wave
+            setTimeout(() => {
+                document.getElementById('eegLoader').classList.add('d-none');
+                
+                // Generate simulated EEG wave points
+                const dataPoints = [];
+                const labels = [];
+                for(let i=0; i<500; i++) {
+                    labels.push((i * 0.01).toFixed(2) + 's');
+                    let val = Math.sin(i * 0.1) * 20 + Math.random() * 10;
+                    dataPoints.push(val);
+                }
+                
+                if(eegChartInstance) eegChartInstance.destroy();
+                
+                const ctx = document.getElementById('eegChart').getContext('2d');
+                eegChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Channel Fp1-A1',
+                            data: dataPoints,
+                            borderColor: '#3b82f6',
+                            borderWidth: 1.5,
+                            tension: 0.3,
+                            pointRadius: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: false,
+                        scales: {
+                            x: { title: { display: true, text: 'Time (s)' } },
+                            y: { title: { display: true, text: 'Amplitude (µV)' } }
+                        },
+                        plugins: {
+                            legend: { display: true, position: 'top' }
+                        }
+                    }
+                });
+                
+            }, 800);
+        }
+    </script>
+</body>
+</html>

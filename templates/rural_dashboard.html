@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rural Doctor Dashboard - easyMed</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Custom Dashboard CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard_enhancements.css') }}">
+    <!-- Professional Loader Assets -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='loader.css') }}">
+    <script src="{{ url_for('static', filename='loader.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='theme-toggle.js') }}" defer></script>
+    <style>
+        .drag-drop-zone {
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            background: #f8fafc;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .drag-drop-zone:hover {
+            border-color: var(--primary-color);
+            background: #f0f9ff;
+        }
+        .drag-drop-zone i {
+            font-size: 2rem;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .specialty-fields {
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    {% include 'loader.html' %}
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <div class="hospital-pattern"></div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <i class="fa-solid fa-house-medical"></i>
+            <h3>easyMed</h3>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a href="#dashboard-overview" class="nav-link active">
+                    <i class="fa-solid fa-house-medical"></i> Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#add-patient-section" class="nav-link">
+                    <i class="fa-solid fa-user-plus"></i> Add Patient
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('my_patients') }}" class="nav-link">
+                    <i class="fa-solid fa-users"></i> My Patients
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('active_chats') }}" class="nav-link">
+                    <i class="fa-solid fa-comments"></i> Chat
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('reports_view') }}" class="nav-link">
+                    <i class="fa-solid fa-file-medical"></i> Reports
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('case_history') }}" class="nav-link">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Case History
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('ai_assistant') }}" class="nav-link">
+                    <i class="fa-solid fa-robot"></i> AI Assistant
+                </a>
+            </li>
+        </ul>
+        <div class="sidebar-footer">
+            <a href="{{ url_for('logout') }}" class="logout-link">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT WRAPPER -->
+    <div class="main-wrapper">
+        <!-- TOP HEADER (Always at the top) -->
+        <header class="top-header">
+            <button class="menu-toggle d-lg-none me-3" id="sidebarToggle">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <div class="header-ecg"></div>
+            <div class="d-flex align-items-center gap-3 position-relative z-1">
+                <h4 class="m-0 fw-bold text-white"><i class="fa-solid fa-hospital me-2"></i>Rural Doctor Portal</h4>
+            </div>
+            <div class="header-user-info">
+                <span class="user-badge text-white">
+                    <span class="status-dot status-online" id="userStatusDot"></span>
+                    <i class="fa-solid fa-user-doctor me-2"></i>{{ session['username'] }}
+                </span>
+                <a href="{{ url_for('analytics_dashboard') }}" class="btn btn-sm btn-outline-light rounded-pill px-3 ms-3 border-0">
+                    <i class="fa-solid fa-chart-line me-1"></i> Analytics
+                </a>
+                <button class="theme-toggle-btn ms-3" id="themeToggle" title="Toggle Dark/Light Mode">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+                <div class="notification-bell text-white" id="notifDropdownToggle">
+                    <i class="fa-solid fa-bell"></i>
+                    <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle {{ 'd-none' if unread_count == 0 }}" id="notifBadge"></span>
+                    
+                    <!-- Dropdown Panel -->
+                    <div class="notifications-panel" id="notifPanel">
+                        <div class="panel-header bg-light">
+                            <h6 class="m-0 fw-bold text-dark">Recent Notifications</h6>
+                        </div>
+                        <div class="panel-body">
+                            {% if notifications %}
+                                {% for notif in notifications %}
+                                <a href="{{ url_for('handle_notification', notif_id=notif['id']) }}" class="notif-item {{ 'unread' if not notif['read_status'] else '' }}">
+                                    <div class="notif-icon">
+                                        <i class="fa-solid fa-circle-info"></i>
+                                    </div>
+                                    <div class="notif-content">
+                                        <p class="m-0 text-dark small">{{ notif['message'] }}</p>
+                                        <span class="text-muted" style="font-size: 0.7rem;">{{ notif['timestamp'] }}</span>
+                                    </div>
+                                </a>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-center py-4 text-muted small">No recent notifications</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Animated Hero Section -->
+        <section class="hero-enhancement" id="hero">
+            <div class="hero-theme-controls">
+                <span class="theme-label">Theme color</span>
+                <div class="color-presets">
+                    <div class="color-dot active" style="background: linear-gradient(135deg, #0ea5e9, #22d3ee);" onclick="updateHeroColor('linear-gradient(135deg, #0ea5e9, #22d3ee)', this)"></div>
+                    <div class="color-dot" style="background: linear-gradient(135deg, #6366f1, #a855f7);" onclick="updateHeroColor('linear-gradient(135deg, #6366f1, #a855f7)', this)"></div>
+                    <div class="color-dot" style="background: linear-gradient(135deg, #10b981, #34d399);" onclick="updateHeroColor('linear-gradient(135deg, #10b981, #34d399)', this)"></div>
+                    <div class="color-dot" style="background: linear-gradient(135deg, #f43f5e, #fb7185);" onclick="updateHeroColor('linear-gradient(135deg, #f43f5e, #fb7185)', this)"></div>
+                    <div class="custom-picker-wrapper" title="Choose custom color">
+                        <input type="color" id="hero-color-picker" oninput="updateHeroColor(this.value, this)">
+                    </div>
+                </div>
+            </div>
+
+            <div class="hero-content">
+                <div class="hero-text-container">
+                    <h1 class="hero-title">Welcome to easyMed</h1>
+                    <p class="hero-subtitle">Your Intelligent Multi-Specialty Telemedicine Platform</p>
+                    <ul class="hero-features">
+                        <li><i class="fa-solid fa-circle-check"></i> Real-time doctor consultation</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Multi-specialist system</li>
+                        <li><i class="fa-solid fa-circle-check"></i> AI-powered chatbot</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Medical imaging analysis</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Patient case tracking</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Smart routing and analytics</li>
+                    </ul>
+                </div>
+                <div class="hero-illustration">
+                    <img src="{{ url_for('static', filename='images/doctor_illustration.png') }}" alt="Medical Professional">
+                </div>
+            </div>
+            <a href="#main-dashboard-content" class="scroll-indicator">
+                <i class="fa-solid fa-chevron-down"></i>
+            </a>
+        </section>
+
+        <div class="main-dashboard-content p-4" id="main-dashboard-content">
+            <div class="content-area">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                  </div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+
+            <div id="dashboard-overview" class="d-flex justify-content-between align-items-center mb-4 pt-3">
+                <h1 class="page-title m-0">easyMed - Dashboard</h1>
+                <p class="text-muted m-0"><i class="fa-regular fa-calendar me-2"></i> Today's Summary</p>
+            </div>
+
+            <!-- STATS CARDS -->
+            <div class="row g-4 mb-5">
+                <div class="col-md-4">
+                    <a href="{{ url_for('case_history') }}" class="stat-link">
+                        <div class="card medical-card border-top border-primary border-4">
+                            <div class="card-body d-flex justify-content-between align-items-center">
+                                <div>
+                                    <p class="text-muted fw-bold mb-1 text-uppercase small">Total Patients</p>
+                                    <h2 class="text-primary m-0 fw-bold">{{ total }}</h2>
+                                </div>
+                                <div class="p-3 bg-primary bg-opacity-10 text-primary rounded-circle">
+                                    <i class="fa-solid fa-users fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-md-4">
+                    <a href="{{ url_for('case_history', status='Pending') }}" class="stat-link">
+                        <div class="card medical-card border-top border-warning border-4">
+                            <div class="card-body d-flex justify-content-between align-items-center">
+                                <div>
+                                    <p class="text-muted fw-bold mb-1 text-uppercase small">Pending Cases</p>
+                                    <h2 class="text-warning m-0 fw-bold">{{ pending }}</h2>
+                                </div>
+                                <div class="p-3 bg-warning bg-opacity-10 text-warning rounded-circle">
+                                    <i class="fa-solid fa-clock-rotate-left fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-md-4">
+                    <a href="{{ url_for('case_history', status='Reviewed') }}" class="stat-link">
+                        <div class="card medical-card border-top border-success border-4">
+                            <div class="card-body d-flex justify-content-between align-items-center">
+                                <div>
+                                    <p class="text-muted fw-bold mb-1 text-uppercase small">Reviewed Cases</p>
+                                    <h2 class="text-success m-0 fw-bold">{{ reviewed }}</h2>
+                                </div>
+                                <div class="p-3 bg-success bg-opacity-10 text-success rounded-circle">
+                                    <i class="fa-solid fa-clipboard-check fa-2x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <!-- ADD PATIENT FORM -->
+                <div class="col-12" id="add-patient-section">
+                    <div class="card medical-card h-100">
+                        <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                            <h4 class="text-primary fw-bold"><i class="fa-solid fa-plus-circle me-2"></i>Add Patient Case</h4>
+                        </div>
+                        <div class="card-body">
+                            <form action="{{ url_for('add_patient') }}" method="POST" enctype="multipart/form-data">
+                                <h6 class="text-muted fw-bold mb-3 mt-2">Patient Information</h6>
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-4">
+                                        <label for="patient_name" class="form-label fw-bold">Full Name *</label>
+                                        <input type="text" class="form-control" id="patient_name" name="patient_name" required placeholder="Enter full name">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="patient_mobile" class="form-label fw-bold">Patient Mobile *</label>
+                                        <input type="tel" class="form-control" id="patient_mobile" name="patient_mobile" required placeholder="For portal access">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="age" class="form-label fw-bold">Age *</label>
+                                        <input type="number" class="form-control" id="age" name="age" required placeholder="Age">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="gender" class="form-label fw-bold">Gender *</label>
+                                        <select class="form-select" name="gender" required>
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="row g-4 mb-4">
+                                    <div class="col-md-6">
+                                        <div class="p-3 bg-light rounded-4 border-start border-primary border-4 shadow-sm position-relative">
+                                            <label class="form-label fw-bold text-primary small d-block mb-2">Target Specialty</label>
+                                            <select name="specialist_type" class="form-select border-0 bg-transparent fw-bold" id="specialistSelect" required onchange="toggleSpecialtyFields()">
+                                                <option value="Neurologist">Neurologist (Brain & Spine)</option>
+                                                <option value="Cardiologist">Cardiologist (Heart & Blood)</option>
+                                                <option value="Dermatologist">Dermatologist (Skin & Hair)</option>
+                                                <option value="Oncologist">Oncologist (Cancer Specialist)</option>
+                                                <option value="Nephrologist">Nephrologist (Kidney Specialist)</option>
+                                                <option value="Pulmonologist">Pulmonologist (Lung Specialist)</option>
+                                            </select>
+                                            <button type="button" class="btn btn-sm btn-primary position-absolute top-0 end-0 mt-2 me-2 rounded-pill" onclick="suggestSpecialist()" title="AI Auto-Suggest">
+                                                <i class="fa-solid fa-wand-magic-sparkles"></i> Auto Suggest
+                                            </button>
+                                        </div>
+                                        <div id="aiSuggestionBox" class="mt-2 d-none">
+                                            <div class="alert alert-info py-2 px-3 small d-flex align-items-center gap-2 mb-0">
+                                                <i class="fa-solid fa-robot"></i>
+                                                <span id="aiSuggestionText"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="p-3 bg-light rounded-4 border-start border-warning border-4 shadow-sm">
+                                            <label for="priority" class="form-label fw-bold text-warning small d-block mb-2">Priority Classification</label>
+                                            <select class="form-select border-0 bg-transparent fw-bold" name="priority">
+                                                <option value="Normal">Normal Follow-up</option>
+                                                <option value="Urgent">Urgent Review</option>
+                                                <option value="Emergency">Emergency Intervention</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-4">
+                                    <label for="problem_description" class="form-label fw-bold">Chief Complaint *</label>
+                                    <textarea class="form-control" id="problem_description" name="problem_description" rows="3" required placeholder="Describe symptoms and medical history..."></textarea>
+                                </div>
+
+                                <!-- Dynamic Specialty Fields -->
+                                <div id="neuroFields" class="specialty-fields p-3 bg-light rounded-3 mb-4 border-start border-info border-4">
+                                    <h6 class="text-info fw-bold mb-3"><i class="fa-solid fa-brain me-2"></i>Neurological Assessment</h6>
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label class="form-label small fw-bold">Consciousness</label>
+                                            <select class="form-select" name="consciousness_level">
+                                                <option value="Alert">Alert</option>
+                                                <option value="Drowsy">Drowsy</option>
+                                                <option value="Unconscious">Unconscious</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label small fw-bold">Speech</label>
+                                            <select class="form-select" name="speech_condition">
+                                                <option value="Normal">Normal</option>
+                                                <option value="Slurred">Slurred</option>
+                                                <option value="Unable to speak">Unable to speak</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label small fw-bold">Motor Function</label>
+                                            <select class="form-select" name="motor_function">
+                                                <option value="Normal">Normal</option>
+                                                <option value="Weakness">Weakness</option>
+                                                <option value="Paralysis">Paralysis</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="cardioFields" class="specialty-fields p-3 bg-light rounded-3 mb-4 border-start border-danger border-4 d-none">
+                                    <h6 class="text-danger fw-bold mb-3"><i class="fa-solid fa-heart-pulse me-2"></i>Cardiology Parameters</h6>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold">Blood Pressure (mmHg)</label>
+                                            <input type="text" name="blood_pressure" class="form-control" placeholder="120/80">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold">Heart Rate (bpm)</label>
+                                            <input type="number" name="heart_rate" class="form-control" placeholder="72">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="pulmoFields" class="specialty-fields p-3 bg-light rounded-3 mb-4 border-start border-success border-4 d-none">
+                                    <h6 class="text-success fw-bold mb-3"><i class="fa-solid fa-lungs me-2"></i>Pulmonology Parameters</h6>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold">Oxygen Level (%)</label>
+                                            <input type="number" name="oxygen_level" class="form-control" placeholder="98">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold">Breathing Pattern</label>
+                                            <input type="text" name="breathing_condition" class="form-control" placeholder="Stable, Dyspnea, etc.">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="dermaFields" class="specialty-fields p-3 bg-light rounded-3 mb-4 border-start border-warning border-4 d-none">
+                                    <h6 class="text-warning fw-bold mb-3"><i class="fa-solid fa-hand-dots me-2"></i>Dermatology Parameters</h6>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold">Skin Appearance</label>
+                                            <input type="text" name="skin_condition" class="form-control" placeholder="Rash, Pale, Lesions">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold">Rash Details</label>
+                                            <input type="text" name="rash_description" class="form-control" placeholder="Itchy, red, etc.">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="oncoFields" class="specialty-fields p-3 bg-light rounded-3 mb-4 border-start border-dark border-4 d-none">
+                                    <h6 class="text-dark fw-bold mb-3"><i class="fa-solid fa-dna me-2"></i>Oncology Information</h6>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold">Tumor Details</label>
+                                            <input type="text" name="tumor_details" class="form-control" placeholder="Size/Location if known">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold">History</label>
+                                            <input type="text" name="cancer_history" class="form-control" placeholder="Family/Past history">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="nephroFields" class="specialty-fields p-3 bg-light rounded-3 mb-4 border-start border-primary border-4 d-none">
+                                    <h6 class="text-primary fw-bold mb-3"><i class="fa-solid fa-kidneys me-2"></i>Nephrology Parameters</h6>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold">Kidney Function</label>
+                                            <input type="text" name="kidney_function" class="form-control" placeholder="eGFR/Creatinine">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold">Urine Info</label>
+                                            <input type="text" name="urine_reports" class="form-control" placeholder="Color, frequency">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-4">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold text-primary">Upload Basic Reports</label>
+                                        <label for="report_file" class="drag-drop-zone d-block w-100 p-3">
+                                            <i class="fa-solid fa-file-pdf"></i>
+                                            <p class="mb-0 fw-bold small">PDF, JPG, PNG</p>
+                                        </label>
+                                        <input type="file" id="report_file" name="report_file" class="d-none">
+                                        <div id="file-name-display" class="mt-2 text-primary fw-bold text-center" style="font-size: 0.75rem;"></div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold text-success">Advanced Imaging (Optional)</label>
+                                        <label for="medical_images" id="drop-zone-medical" class="drag-drop-zone d-block w-100 p-3" style="border-color: #86efac; background-color: #f0fdf4;">
+                                            <i class="fa-solid fa-x-ray text-success"></i>
+                                            <p class="mb-0 fw-bold small text-success">DICOM (.dcm), EEG (.edf)</p>
+                                            <p class="mb-0 text-muted" style="font-size: 0.65rem;">(Hold Ctrl to select multiple, or drag & drop)</p>
+                                        </label>
+                                        <input type="file" id="medical_images" name="medical_images" multiple accept="*/*" class="d-none">
+                                        <div id="medical-images-display" class="mt-2 text-success fw-bold text-center" style="font-size: 0.75rem;"></div>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-medical w-100 py-3 fw-bold text-uppercase"><i class="fa-solid fa-paper-plane me-2"></i>Submit Diagnostic Case</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='notifications.js') }}"></script>
+    <script>
+        // File name display
+        document.getElementById('report_file').addEventListener('change', function() {
+            const fileName = this.files[0] ? this.files[0].name : '';
+            document.getElementById('file-name-display').innerText = fileName ? 'Selected: ' + fileName : '';
+        });
+
+        const dropZone = document.getElementById('drop-zone-medical');
+        const fileInput = document.getElementById('medical_images');
+
+        const dt = new DataTransfer(); // Holds running list of files
+        
+        function updateImagesDisplay() {
+            const count = fileInput.files.length;
+            const names = Array.from(fileInput.files).map(f => f.name).join(', ');
+            document.getElementById('medical-images-display').innerText = count > 0 ? `Selected ${count} File(s): ${names}` : '';
+            
+            // Allow clicking again to add *more* files by resetting input value AFTER capturing
+            // Wait, if we reset input value, it clears it! Better to just leave it and let DataTransfer accumulate.
+        }
+
+        fileInput.addEventListener('change', function() {
+            for (let i = 0; i < this.files.length; i++) {
+                dt.items.add(this.files[i]);
+            }
+            this.files = dt.files; // Update the real input with accumulated files
+            updateImagesDisplay();
+        });
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.backgroundColor = '#dcfce7'; // Darker green
+        });
+        
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropZone.style.backgroundColor = '#f0fdf4';
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.backgroundColor = '#f0fdf4';
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                for (let i = 0; i < e.dataTransfer.files.length; i++) {
+                    dt.items.add(e.dataTransfer.files[i]);
+                }
+                fileInput.files = dt.files;
+                updateImagesDisplay();
+            }
+        });
+
+        function toggleSpecialtyFields() {
+            const specialty = document.getElementById('specialistSelect').value;
+            // Hide all
+            document.querySelectorAll('.specialty-fields').forEach(el => el.classList.add('d-none'));
+            
+            // Show selected
+            if (specialty === 'Neurologist') document.getElementById('neuroFields').classList.remove('d-none');
+            else if (specialty === 'Cardiologist') document.getElementById('cardioFields').classList.remove('d-none');
+            else if (specialty === 'Pulmonologist') document.getElementById('pulmoFields').classList.remove('d-none');
+            else if (specialty === 'Dermatologist') document.getElementById('dermaFields').classList.remove('d-none');
+            else if (specialty === 'Oncologist') document.getElementById('oncoFields').classList.remove('d-none');
+            else if (specialty === 'Nephrologist') document.getElementById('nephroFields').classList.remove('d-none');
+        }
+
+        async function suggestSpecialist() {
+            const symptoms = document.getElementById('problem_description').value;
+            if (!symptoms || symptoms.length < 5) {
+                alert("Please describe symptoms first.");
+                return;
+            }
+            
+            const btn = event.currentTarget;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analyzing...';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/suggest_specialist', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symptoms })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    const select = document.getElementById('specialistSelect');
+                    select.value = data.specialist;
+                    toggleSpecialtyFields();
+                    
+                    const suggestionBox = document.getElementById('aiSuggestionBox');
+                    const suggestionText = document.getElementById('aiSuggestionText');
+                    suggestionBox.classList.remove('d-none');
+                    suggestionText.innerHTML = marked.parse(data.reason);
+                    
+                    // Highlight the box
+                    document.getElementById('aiSuggestionBox').classList.add('animate__animated', 'animate__flash');
+                }
+            } catch (err) {
+                console.error(err);
+            } finally {
+                btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Auto Suggest';
+                btn.disabled = false;
+            }
+        }
+
+        // Notifications Toggle Logic
+        document.addEventListener('DOMContentLoaded', function() {
+            const bell = document.getElementById('notifDropdownToggle');
+            const panel = document.getElementById('notifPanel');
+            const badge = document.getElementById('notifBadge');
+
+            if(bell && panel) {
+                bell.addEventListener('click', function(e) {
+                    if (e.target.closest('a')) return;
+                    panel.classList.toggle('show');
+                    
+                    if (panel.classList.contains('show') && badge) {
+                        fetch('{{ url_for("mark_notifications_read") }}', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        }).then(response => response.json())
+                          .then(data => {
+                              if(data.success) {
+                                  badge.style.display = 'none';
+                                  document.querySelectorAll('.notif-item.unread').forEach(item => {
+                                      item.classList.remove('unread');
+                                  });
+                              }
+                          });
+                    }
+                });
+                document.addEventListener('click', function(e) {
+                    if (!bell.contains(e.target)) panel.classList.remove('show');
+                });
+            }
+        });
+
+        // Hero Theme Color Logic
+        function updateHeroColor(color, element) {
+            document.documentElement.style.setProperty('--hero-bg', color);
+            localStorage.setItem('easyMed-hero-color', color);
+            
+            if (element && element.classList.contains('color-dot')) {
+                document.querySelectorAll('.color-dot').forEach(dot => dot.classList.remove('active'));
+                element.classList.add('active');
+            }
+        }
+
+        // Initialize Theme
+        (function initTheme() {
+            const savedColor = localStorage.getItem('easyMed-hero-color');
+            if (savedColor) {
+                document.documentElement.style.setProperty('--hero-bg', savedColor);
+                document.querySelectorAll('.color-dot').forEach(dot => {
+                    const bg = dot.style.background;
+                    if (bg.includes(savedColor) || savedColor.includes(bg)) {
+                        dot.classList.add('active');
+                    } else {
+                        dot.classList.remove('active');
+                    }
+                });
+            }
+        })();
+
+        // Mobile Sidebar Toggle Logic
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            const sidebar = document.querySelector('.sidebar');
+
+            if (sidebarToggle && sidebar && sidebarOverlay) {
+                sidebarToggle.addEventListener('click', function() {
+                    sidebar.classList.toggle('active');
+                    sidebarOverlay.classList.toggle('active');
+                });
+
+                sidebarOverlay.addEventListener('click', function() {
+                    sidebar.classList.remove('active');
+                    sidebarOverlay.classList.remove('active');
+                });
+
+                // Close sidebar when clicking a link on mobile
+                document.querySelectorAll('.nav-link').forEach(link => {
+                    link.addEventListener('click', () => {
+                        sidebar.classList.remove('active');
+                        sidebarOverlay.classList.remove('active');
+                    });
+                });
+            }
+        });
+    </script>
+            
+            </div> <!-- End content-area -->
+
+            <!-- Bottom Wellness Section -->
+            <section class="wellness-section">
+                <h2 class="wellness-title">Healthy Living Tips</h2>
+                <div class="wellness-grid">
+                    <div class="wellness-card">
+                        <img src="{{ url_for('static', filename='images/exercise.png') }}" alt="Exercise">
+                        <div class="wellness-card-content">
+                            <p class="wellness-card-text">Physical Activity for Longevity</p>
+                            <ul class="wellness-details-list text-start">
+                                <li><i class="fa-solid fa-check"></i> Aim for 150 minutes of moderate aerobic activity weekly.</li>
+                                <li><i class="fa-solid fa-check"></i> Daily walking reduces current risk of stroke and heart disease.</li>
+                                <li><i class="fa-solid fa-check"></i> Incorporate strength training twice a week for muscle health.</li>
+                                <li><i class="fa-solid fa-check"></i> Activity improves mental clarity and reduces clinical brain fog.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="wellness-card">
+                        <img src="{{ url_for('static', filename='images/healthy_food.png') }}" alt="Healthy Food">
+                        <div class="wellness-card-content">
+                            <p class="wellness-card-text">Nutritional Balance & Vitality</p>
+                            <ul class="wellness-details-list text-start">
+                                <li><i class="fa-solid fa-pepper-hot"></i> Prioritize whole grains, lean proteins, and leafy greens.</li>
+                                <li><i class="fa-solid fa-pepper-hot"></i> Minimize processed sugars to maintain steady energy levels.</li>
+                                <li><i class="fa-solid fa-pepper-hot"></i> Hydrate with at least 8-10 glasses of clean water daily.</li>
+                                <li><i class="fa-solid fa-pepper-hot"></i> Antioxidant-rich foods support rapid cellular repair.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="wellness-card">
+                        <img src="{{ url_for('static', filename='images/meditation.png') }}" alt="Meditation">
+                        <div class="wellness-card-content">
+                            <p class="wellness-card-text">Mindfulness & Mental Peace</p>
+                            <ul class="wellness-details-list text-start">
+                                <li><i class="fa-solid fa-heart-pulse"></i> Practice deep breathing for 10 minutes every single day.</li>
+                                <li><i class="fa-solid fa-heart-pulse"></i> Engaging with nature significantly lowers baseline cortisol.</li>
+                                <li><i class="fa-solid fa-heart-pulse"></i> Maintain healthy work-life balance to avoid burnout risk.</li>
+                                <li><i class="fa-solid fa-heart-pulse"></i> Regular breaks improve overall cognitive focus and clarity.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="wellness-card">
+                        <img src="{{ url_for('static', filename='images/sleep.png') }}" alt="Sleep">
+                        <div class="wellness-card-content">
+                            <p class="wellness-card-text">Restorative Sleep & Recovery</p>
+                            <ul class="wellness-details-list text-start">
+                                <li><i class="fa-solid fa-moon"></i> Consistent 7-9 hours of sleep regulates immune function.</li>
+                                <li><i class="fa-solid fa-moon"></i> Avoid blue light from screens 1 hour before scheduled bed.</li>
+                                <li><i class="fa-solid fa-moon"></i> Maintain a dark, cool, quiet environment for deep rest.</li>
+                                <li><i class="fa-solid fa-moon"></i> Quality sleep is crucial for neuro-regenerative processes.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div> <!-- End main-dashboard-content -->
+    </div> <!-- End main-wrapper -->
+
+    {% include 'diagnostic_viewer.html' %}
+    <!-- AI Chatbot -->
+    {% include 'chatbot.html' %}
+</body>
+</html>

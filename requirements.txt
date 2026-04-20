@@ -1,0 +1,10 @@
+Flask==3.1.2
+Werkzeug==3.1.5
+flask-socketio==5.6.1
+eventlet==0.40.4
+requests>=2.30.0
+flask-cors
+gunicorn==23.0.0
+gunicorn[eventlet]
+reportlab==4.3.1
+psycopg2-binary

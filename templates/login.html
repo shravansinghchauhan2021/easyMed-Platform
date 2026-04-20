@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - easyMed</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #0f172a, #082f49);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body class="dark-mode">
+    <!-- Animated Medical Background -->
+    <div class="bg-animated">
+        <!-- Row 1 -->
+        <svg class="anim-float-up" style="top: 5%; left: 10%; width: 80px; opacity: 0.45; fill: #818cf8;" viewBox="0 0 24 24"><path d="M18,12C18,13.62 17.15,14.71 16.4,15.14C16.89,16.03 17,17.41 17,18.5V20H15.5V18C15.5,17.5 15.3,16.5 14.5,16.5C13.7,16.5 13.5,17.5 13.5,18V20H12V18C12,17.5 11.8,16.5 11,16.5C10.2,16.5 10,17.5 10,18V20H8.5V18C8.5,17.41 8.61,16.03 9.1,15.14C8.35,14.71 7.5,13.62 7.5,12C7.5,10.38 8.16,9.1 9,8.43L9,7A3,3 0 0,1 12,4A3,3 0 0,1 15,7L15,8.43C15.84,9.1 16.5,10.38 16.5,12H18M12,2A5,5 0 0,0 7,7V7.18C5.8,7.9 5,9.25 5,11C5,13.31 6.84,15.17 8,15.76C7.5,16.6 7,17.61 7,18.5V20A2,2 0 0,0 9,22H16A2,2 0 0,0 18,22V18.5C18,17.61 17.5,16.6 17,15.76C18.16,15.17 20,13.31 20,11C20,9.25 19.2,7.9 18,7.18V7A5,5 0 0,0 13,2H12Z" /></svg>
+        <svg class="anim-float-horiz" style="top: 5%; left: 45%; width: 90px; opacity: 0.4; animation-delay: -3s; fill: #fca5a5;" viewBox="0 0 24 24"><path d="M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5C2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35M16.5,5C15.11,5 13.78,5.74 13,6.86L12,8.1L11,6.86C10.22,5.74 8.89,5 7.5,5C5.54,5 4,6.54 4,8.5C4,11.53 7.08,14.33 11.36,18.22L12,18.8L12.64,18.22C16.92,14.33 20,11.53 20,8.5C20,6.54 18.46,5 16.5,5M11.5,13.5V11.5H9.5L12,6.5L14,11.5H12.5V13.5H11.5Z" /></svg>
+        <svg class="anim-rotate" style="top: 5%; left: 80%; width: 70px; opacity: 0.5; animation-delay: -5s; fill: #86efac;" viewBox="0 0 24 24"><path d="M19.5,15.5L14,21L4.5,11.5L10,6L19.5,15.5M19.7,13.7L18.3,12.3C18.1,12.1 17.8,12.1 17.6,12.3L15.5,14.4L11.5,10.4L13.6,8.3C13.8,8.1 13.8,7.8 13.6,7.6L12.2,6.2C12,6 11.7,6 11.5,6.2L6.2,11.5C6,11.7 6,12 6.2,12.2L7.6,13.6C7.8,13.8 8.1,13.8 8.3,13.6L10.4,11.5L14.4,15.5L12.3,17.6C12.1,17.8 12.1,18.1 12.3,18.3L13.7,19.7C13.9,19.9 14.2,19.9 14.4,19.7L19.7,14.4C19.9,14.2 19.9,13.9 19.7,13.7M17,13L15,15L17,17L19,15L17,13Z" /></svg>
+        
+        <!-- Row 2 -->
+        <svg class="anim-float-horiz" style="top: 25%; left: 15%; width: 100px; opacity: 0.42; animation-delay: -2s; fill: #818cf8;" viewBox="0 0 24 24"><path d="M10.6,13.4C11,12.5 11.3,11.5 11.3,10.5C11.3,9.5 11,8.5 10.6,7.6L12,6.2L13.4,7.6C13,8.5 12.7,9.5 12.7,10.5C12.7,11.5 13,12.5 13.4,13.4L12,14.8L10.6,13.4M9.2,14.8C8.5,13.5 8.1,12 8.1,10.5C8.1,9 8.5,7.5 9.2,6.2L7.8,4.8C6.8,6.5 6.2,8.4 6.2,10.5C6.2,12.6 6.8,14.5 7.8,16.2L9.2,14.8M14.8,14.8L16.2,16.2C17.2,14.5 17.8,12.6 17.8,10.5C17.8,8.4 17.2,6.5 16.2,4.8L14.8,6.2C15.5,7.5 15.9,9 15.9,10.5C15.9,12 15.5,13.5 14.8,14.8Z" /></svg>
+        <svg class="anim-rotate" style="top: 25%; left: 50%; width: 110px; opacity: 0.55; animation-delay: -7s; fill: #67e8f9;" viewBox="0 0 24 24"><path d="M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5C2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35M7.5,5C5.54,5 4,6.54 4,8.5C4,11.53 7.08,14.33 11.36,18.22L12,18.8L12.64,18.22C16.92,14.33 20,11.53 20,8.5C20,6.54 18.46,5 16.5,5C15.11,5 13.78,5.74 13,6.86L12,8.1L11,6.86C10.22,5.74 8.89,5 7.5,5Z" /></svg>
+        <svg class="anim-float-up" style="top: 25%; left: 85%; width: 85px; opacity: 0.48; animation-delay: -4s; fill: #818cf8;" viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12,6A6,6 0 0,0 6,12H8A4,4 0 0,1 12,16A4,4 0 0,1 16,12H18A6,6 0 0,0 12,6M12,8A4,4 0 0,1 8,12H10A2,2 0 0,0 12,14A2,2 0 0,0 14,12H16A4,4 0 0,1 12,8Z" /></svg>
+
+        <!-- Row 3 -->
+        <svg class="anim-rotate" style="top: 45%; left: 5%; width: 65px; opacity: 0.52; animation-delay: -8s; fill: #67e8f9;" viewBox="0 0 24 24"><path d="M19,3L22,6L11,17H8L5,14L15,4M13,3H15L11,7V9H9L5,13V15L3,17L2,18L3,19L4,20L5,21L6,22L7,21L21,7L22,6L21,5L19,3Z" /></svg>
+        <svg class="anim-float-up" style="top: 45%; left: 40%; width: 75px; opacity: 0.4; animation-delay: -1s; fill: #86efac;" viewBox="0 0 24 24"><path d="M15,13V5A3,3 0 0,0 9,5V13A5,5 0 1,0 15,13M12,4A1,1 0 0,1 13,5V8H11V5A1,1 0 0,1 12,4M12,18A3,3 0 0,1 10.1,13.29L11,12.6V10H13V12.6L13.9,13.29A3,3 0 0,1 12,18Z" /></svg>
+        <svg class="anim-float-horiz" style="top: 45%; left: 75%; width: 95px; opacity: 0.48; animation-delay: -6s; fill: #86efac;" viewBox="0 0 24 24"><path d="M18.3,5.7C17.5,4.9 16.5,4.5 15.4,4.5C14.3,4.5 13.3,4.9 12.5,5.7L5.7,12.5C4.1,14.1 4.1,16.7 5.7,18.3C6.5,19.1 7.5,19.5 8.6,19.5C9.7,19.5 10.7,19.1 11.5,18.3L18.3,11.5C19.9,9.9 19.9,7.3 18.3,5.7M10.1,16.9L7.1,13.9L8.5,12.5L11.5,15.5L10.1,16.9M15.5,11.5L12.5,8.5L13.9,7.1L16.9,10.1L15.5,11.5Z" /></svg>
+
+        <!-- Row 4 -->
+        <svg class="anim-float-up" style="top: 65%; left: 12%; width: 105px; opacity: 0.35; animation-delay: -9s; fill: #67e8f9;" viewBox="0 0 24 24"><path d="M18,14H14V18H10V14H6V22H18V14M12,2L2,22H22L12,2M12,5.33L19.33,20H4.67L12,5.33Z" /></svg>
+        <svg class="anim-float-horiz" style="top: 65%; left: 48%; width: 80px; opacity: 0.5; animation-delay: -3s; fill: #fcd34d;" viewBox="0 0 24 24"><path d="M13,2V4H11V2H13M13,20V22H11V20H13M19,13H21V11H19V13M3,13H5V11H3V13M12,5A7,7 0 0,0 5,12A7,7 0 0,0 12,19A7,7 0 0,0 19,12A7,7 0 0,0 12,5M12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7Z" /></svg>
+        <svg class="anim-rotate" style="top: 65%; left: 82%; width: 70px; opacity: 0.45; animation-delay: -5s; fill: #fcd34d;" viewBox="0 0 24 24"><path d="M12.18,12.69L11.06,10.17L7.8,9.5L10.33,7.46L9.5,4.2L12.18,6L14.85,4.2L14.03,7.46L16.55,9.5L13.29,10.17L12.18,12.69Z" /></svg>
+
+        <!-- Row 5 -->
+        <svg class="anim-rotate" style="top: 85%; left: 8%; width: 90px; opacity: 0.38; animation-delay: -2s; fill: #fcd34d;" viewBox="0 0 24 24"><path d="M12,2A9,9 0 0,0 3,11V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V11A9,9 0 0,0 12,2M12,4A7,7 0 0,1 19,11V13H5V11A7,7 0 0,1 12,4M12,19A2,2 0 0,1 10,17H14A2,2 0 0,1 12,19Z" /></svg>
+        <svg class="anim-float-up" style="top: 85%; left: 42%; width: 120px; opacity: 0.35; animation-delay: -7s; fill: #818cf8;" viewBox="0 0 24 24"><path d="M12,12C14.21,12 16,10.21 16,8C16,5.79 14.21,4 12,4C9.79,4 8,5.79 8,8C8,10.21 9.79,12 12,12M12,14C9.33,14 4,15.33 4,18V20H20V18C20,15.33 14.67,14 12,14Z" /></svg>
+        <svg class="anim-float-horiz" style="top: 85%; left: 78%; width: 95px; opacity: 0.42; animation-delay: -4s; fill: #818cf8;" viewBox="0 0 24 24"><path d="M10.6,13.4C11,12.5 11.3,11.5 11.3,10.5C11.3,9.5 11,8.5 10.6,7.6L12,6.2C13.5,7.7 15,9.2 15,10.7C15,12.2 13.5,13.7 12,15.2L10.6,13.4Z" /></svg>
+    </div>
+
+    <div class="container">
+        <div class="auth-card glass-panel">
+            <div class="auth-header text-center">
+                <i class="fa-solid fa-house-medical fa-3x text-info mb-3"></i>
+                <h1>easyMed</h1>
+                <p>Multi-Specialty Telemedicine Platform</p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="flash {{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <form action="{{ url_for('login') }}" method="POST">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" class="form-control" required placeholder="Enter your username">
+                </div>
+
+                <div class="form-group">
+                    <label for="profession">Profession</label>
+                    <select id="profession" name="profession" class="form-control" required>
+                        <option value="" disabled selected>Select your profession</option>
+                        <option value="Patient">Patient</option>
+                        <option value="Rural Doctor">Rural Doctor</option>
+                        <option value="Cardiologist">Cardiologist</option>
+                        <option value="Neurologist">Neurologist</option>
+                        <option value="Dermatologist">Dermatologist</option>
+                        <option value="Oncologist">Oncologist</option>
+                        <option value="Nephrologist">Nephrologist</option>
+                        <option value="Pulmonologist">Pulmonologist</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" class="form-control" required placeholder="Enter your password">
+                </div>
+
+                <div class="forgot-password">
+                    <a href="{{ url_for('forgot_password') }}">Forgot Password?</a>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Login</button>
+            </form>
+
+            <div class="auth-footer">
+                <p>New User? <a href="{{ url_for('register') }}">Register here</a></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

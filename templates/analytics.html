@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Dashboard - easyMed</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .analytics-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            padding: 25px;
+            height: 100%;
+            transition: transform 0.3s ease;
+        }
+        .analytics-card:hover {
+            transform: translateY(-5px);
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="dashboard-wrapper">
+        <header class="dashboard-header bg-primary">
+            <div class="d-flex align-items-center">
+                <a href="javascript:history.back()" class="btn text-white me-3"><i class="fa-solid fa-arrow-left"></i></a>
+                <h4 class="m-0 fw-bold text-white"><i class="fa-solid fa-chart-line me-2"></i>Advanced AI Analytics</h4>
+            </div>
+            <div class="header-user-info">
+                <span class="user-badge text-white">
+                    <i class="fa-solid fa-user-doctor me-2"></i>{{ session['username'] }}
+                </span>
+            </div>
+        </header>
+
+        <div class="content-area p-4">
+            <!-- QUICK STATS -->
+            <div class="row g-4 mb-5">
+                <div class="col-md-3">
+                    <div class="analytics-card border-start border-primary border-5">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <p class="text-muted small fw-bold mb-1">TOTAL CASES</p>
+                                <h2 class="fw-bold m-0">{{ stats['total'] }}</h2>
+                            </div>
+                            <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+                                <i class="fa-solid fa-folder-open"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="analytics-card border-start border-danger border-5">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <p class="text-muted small fw-bold mb-1">HIGH RISK</p>
+                                <h2 class="fw-bold m-0 text-danger">{{ stats['high_risk'] }}</h2>
+                            </div>
+                            <div class="stat-icon bg-danger bg-opacity-10 text-danger">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="analytics-card border-start border-warning border-5">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <p class="text-muted small fw-bold mb-1">PENDING</p>
+                                <h2 class="fw-bold m-0">{{ stats['pending'] }}</h2>
+                            </div>
+                            <div class="stat-icon bg-warning bg-opacity-10 text-warning">
+                                <i class="fa-solid fa-clock"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="analytics-card border-start border-success border-5">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <p class="text-muted small fw-bold mb-1">COMPLETED</p>
+                                <h2 class="fw-bold m-0 text-success">{{ stats['reviewed'] }}</h2>
+                            </div>
+                            <div class="stat-icon bg-success bg-opacity-10 text-success">
+                                <i class="fa-solid fa-check-double"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4 mb-5">
+                <!-- CHART 1: SPECIALTY DISTRIBUTION -->
+                <div class="col-lg-8">
+                    <div class="analytics-card">
+                        <h5 class="fw-bold mb-4 text-dark"><i class="fa-solid fa-stethoscope me-2 text-primary"></i>Total Cases by Specialty</h5>
+                        <div class="chart-container">
+                            <canvas id="specialtyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <!-- CHART 2: RISK DISTRIBUTION -->
+                <div class="col-lg-4">
+                    <div class="analytics-card">
+                        <h5 class="fw-bold mb-4 text-dark"><i class="fa-solid fa-shield-virus me-2 text-danger"></i>Risk Level Distribution</h5>
+                        <div class="chart-container">
+                            <canvas id="riskChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- CHART 3: MONTHLY TRENDS -->
+                <div class="col-12">
+                    <div class="analytics-card">
+                        <h5 class="fw-bold mb-4 text-dark"><i class="fa-solid fa-chart-area me-2 text-info"></i>Monthly Case Activity</h5>
+                        <div class="chart-container" style="height: 400px;">
+                            <canvas id="trendChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Use standard Chart.js configurations with premium colors
+        const colors = {
+            primary: '#2563eb',
+            success: '#10b981',
+            danger: '#ef4444',
+            warning: '#f59e0b',
+            info: '#06b6d4',
+            bg: ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316', '#eab308']
+        };
+
+        // Specialty Chart
+        new Chart(document.getElementById('specialtyChart'), {
+            type: 'bar',
+            data: {
+                labels: {{ specialty_labels|tojson }},
+                datasets: [{
+                    label: 'Cases',
+                    data: {{ specialty_counts|tojson }},
+                    backgroundColor: colors.primary + 'cc',
+                    borderRadius: 10,
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { display: false } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // Risk Chart
+        new Chart(document.getElementById('riskChart'), {
+            type: 'doughnut',
+            data: {
+                labels: {{ risk_labels|tojson }},
+                datasets: [{
+                    data: {{ risk_counts|tojson }},
+                    backgroundColor: [colors.success, colors.warning, colors.danger],
+                    borderWidth: 0,
+                    cutout: '70%'
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } }
+                }
+            }
+        });
+
+        // Trend Chart
+        new Chart(document.getElementById('trendChart'), {
+            type: 'line',
+            data: {
+                labels: {{ trend_labels|tojson }},
+                datasets: [{
+                    label: 'Patient Inflow',
+                    data: {{ trend_counts|tojson }},
+                    borderColor: colors.info,
+                    backgroundColor: colors.info + '22',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 5,
+                    pointBackgroundColor: colors.info
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { borderDash: [5, 5] } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

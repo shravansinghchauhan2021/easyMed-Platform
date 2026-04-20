@@ -395,7 +395,26 @@ def create_notification(user_id, message, link="#", patient_id=None, conn=None):
         conn.commit()
         conn.close()
 
-# Initialize database on startup handled at the end of the file
+# Initialize database on first request
+_db_initialized = False
+
+@app.before_request
+def startup_init():
+    global _db_initialized
+    if not _db_initialized:
+        try:
+            print(">>> Starting first-request database initialization...", flush=True)
+            init_db()
+            print(">>> Database initialized successfully on first request!", flush=True)
+            _db_initialized = True
+        except Exception as e:
+            print("\n" + "!"*60)
+            print("CRITICAL ERROR DURING INITIAL REQUEST SETUP:")
+            print(str(e))
+            print("="*60)
+            traceback.print_exc()
+            print("!"*60 + "\n", flush=True)
+            # We don't set _db_initialized to True so it tries again on next request
 
 @app.route('/privacy')
 def privacy():
@@ -1651,19 +1670,6 @@ def api_analyze_scan(patient_id):
         'report': report,
         'severity': severity
     })
-
-# Defensive Database Initialization
-try:
-    print(">>> Starting database initialization...", flush=True)
-    init_db()
-    print(">>> Database initialized successfully!", flush=True)
-except Exception as e:
-    print("\n" + "!"*60)
-    print("❌ CRITICAL ERROR DURING DATABASE INITIALIZATION:")
-    print(str(e))
-    print("="*60)
-    traceback.print_exc()
-    print("!"*60 + "\n", flush=True)
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=False)

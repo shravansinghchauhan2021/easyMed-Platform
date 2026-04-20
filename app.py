@@ -65,7 +65,10 @@ def init_db():
     if is_postgres:
         print("\n" + "="*50)
         print("[SYSTEM] Database Status: CONNECTED TO PERMANENT POSTGRESQL")
-        print("="*50 + "\n", flush=True)
+        print("[DB-INIT] Wiping and Rebuilding corrupted tables...", flush=True)
+        # NUCLEAR RESET: Clear everything to fix the corrupted Brain
+        db_execute(conn, 'DROP TABLE IF EXISTS users, patients, messages, notifications, medical_images CASCADE')
+        conn.commit()
     else:
         print("\n" + "!"*50)
         print("[SYSTEM] Database Status: USING TEMPORARY LOCAL SQLITE")
@@ -83,10 +86,12 @@ def init_db():
             status TEXT DEFAULT 'Offline'
         )
     ''')
+    conn.commit()
     
     if not is_postgres:
         try:
             db_execute(conn, 'ALTER TABLE users ADD COLUMN mobile_number TEXT')
+            conn.commit()
         except: pass
     
     db_execute(conn, f'''
@@ -105,6 +110,7 @@ def init_db():
             status TEXT DEFAULT 'Pending', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    conn.commit()
     
     for table_sql in [
         f'CREATE TABLE IF NOT EXISTS messages (id {pk_style}, patient_id INTEGER, sender_id INTEGER, message TEXT, file_path TEXT, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)',
@@ -112,6 +118,7 @@ def init_db():
         f'CREATE TABLE IF NOT EXISTS medical_images (id {pk_style}, patient_id INTEGER, file_path TEXT, modality TEXT, sequence_type TEXT, uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)'
     ]:
         db_execute(conn, table_sql)
+        conn.commit()
     
     cols_to_add = [
         ('patients', 'patient_user_id', 'INTEGER'), ('patients', 'risk_level', "TEXT DEFAULT 'Low'"),
@@ -134,7 +141,6 @@ def init_db():
             conn.commit()
         except: pass
 
-    conn.commit()
     conn.close()
 
 # --- Step 2.5: Run Initialization (While still blocking-safe) ---

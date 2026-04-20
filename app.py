@@ -1,5 +1,5 @@
 import eventlet
-eventlet.monkey_patch(all=True)
+eventlet.monkey_patch()
 
 # Standard imports
 import os
@@ -154,14 +154,18 @@ def init_db():
 
     conn.close()
 
-# --- Step 2.5: Run Initialization (While still blocking-safe) ---
-try:
-    print(">>> Initializing Database...", flush=True)
-    init_db()
-    print(">>> Initialization Clean!", flush=True)
-except Exception as e:
-    print(f"DIAGNOSTIC ERROR IN INIT: {e}")
-    traceback.print_exc()
+
+_db_initialized = False
+
+def safe_init_db():
+    global _db_initialized
+    if not _db_initialized:
+        try:
+            print(">>> [LAZY INIT] Verifying database schema...", flush=True)
+            init_db()
+            _db_initialized = True
+        except Exception as e:
+            print(f">>> [ERROR] Lazy Init Failed: {e}", flush=True)
 
 # --- Step 3: Global Logic & Flask App Setup ---
 
@@ -183,6 +187,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 
 app = Flask(__name__)
+app.before_request(safe_init_db)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 app.secret_key = 'super_secret_medical_key_for_dev'
 CORS(app)

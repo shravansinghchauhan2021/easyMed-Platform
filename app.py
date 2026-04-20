@@ -30,7 +30,9 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 
 DATABASE = 'database.db'
-DATABASE_URL = os.environ.get('DATABASE_URL') # Set this on Render
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if DATABASE_URL and DATABASE_URL.startswith('postgres://'):
+    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
 UPLOAD_FOLDER = 'uploads'
 IMAGING_FOLDER = os.path.join(UPLOAD_FOLDER, 'imaging')
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar', 'csv', 'mp4', 'mov', 'avi', 'dcm', 'edf'}
@@ -225,9 +227,7 @@ def init_db():
         print("\n" + "!"*50)
         print("⚠️ [SYSTEM] Database Status: USING TEMPORARY LOCAL SQLITE")
         print("!"*50 + "\n", flush=True)
-    conn = get_db_connection()
-    is_postgres = DATABASE_URL is not None
-    
+
     # Use SERIAL for PostgreSQL, AUTOINCREMENT for SQLite
     pk_style = "SERIAL PRIMARY KEY" if is_postgres else "INTEGER PRIMARY KEY AUTOINCREMENT"
     
@@ -242,7 +242,7 @@ def init_db():
         )
     ''')
     
-    # Migration: Add mobile_number if it doesn't exist (SQLite style, Postgres handled by CREATE)
+    # Migration: Add mobile_number if it doesn't exist
     if not is_postgres:
         try:
             db_execute(conn, 'ALTER TABLE users ADD COLUMN mobile_number TEXT')
@@ -266,10 +266,28 @@ def init_db():
             priority_level TEXT DEFAULT 'Normal',
             risk_level TEXT DEFAULT 'Low',
             predicted_condition TEXT DEFAULT 'General Consultation',
+            ai_prediction TEXT,
+            scan_analysis_report TEXT,
+            consciousness_level TEXT,
+            speech_condition TEXT,
+            motor_function TEXT,
+            headache_severity TEXT,
+            seizure_history TEXT,
+            tumor_details TEXT,
+            cancer_history TEXT,
+            kidney_function TEXT,
+            urine_reports TEXT,
+            skin_condition TEXT,
+            rash_description TEXT,
+            breathing_condition TEXT,
+            final_diagnosis TEXT,
+            final_recommendations TEXT,
+            assigned_doctor_id INTEGER,
             rural_doctor_id INTEGER,
             specialist_id INTEGER,
             specialist_type TEXT DEFAULT 'Neurologist',
-            status TEXT DEFAULT 'Pending'
+            status TEXT DEFAULT 'Pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     
@@ -307,8 +325,11 @@ def init_db():
         )
     ''')
 
-    # Add missing columns for Phase 4/5 if not present
+    # Comprehensive Migration List
     cols_to_add = [
+        ('patients', 'patient_user_id', 'INTEGER'),
+        ('patients', 'risk_level', "TEXT DEFAULT 'Low'"),
+        ('patients', 'predicted_condition', "TEXT DEFAULT 'General Consultation'"),
         ('patients', 'ai_prediction', 'TEXT'),
         ('patients', 'scan_analysis_report', 'TEXT'),
         ('patients', 'consciousness_level', 'TEXT'),
@@ -323,19 +344,19 @@ def init_db():
         ('patients', 'skin_condition', 'TEXT'),
         ('patients', 'rash_description', 'TEXT'),
         ('patients', 'breathing_condition', 'TEXT'),
-        ('patients', 'risk_level', "TEXT DEFAULT 'Low'"),
-        ('patients', 'predicted_condition', "TEXT DEFAULT 'General Consultation'"),
+        ('patients', 'priority_level', 'TEXT'),
         ('patients', 'final_diagnosis', 'TEXT'),
         ('patients', 'final_recommendations', 'TEXT'),
-        ('patients', 'priority_level', 'TEXT'),
-        ('patients', 'assigned_doctor_id', 'INTEGER')
+        ('patients', 'assigned_doctor_id', 'INTEGER'),
+        ('patients', 'created_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
     ]
     
     for table, col, dtype in cols_to_add:
         try:
             db_execute(conn, f'ALTER TABLE {table} ADD COLUMN {col} {dtype}')
+            conn.commit()
         except:
-            pass
+            pass # Column already exists
 
     conn.commit()
     conn.close()

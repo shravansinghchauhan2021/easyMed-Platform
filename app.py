@@ -65,7 +65,10 @@ def init_db():
     if is_postgres:
         print("\n" + "="*50)
         print("[SYSTEM] Database Status: CONNECTED TO PERMANENT POSTGRESQL")
-        print("[SYSTEM] Schema sync in progress...", flush=True)
+        print("[SYSTEM] Final Reset in progress (Wiping old corrupted data)...", flush=True)
+        # FINAL CLEAR: Wiping old corruption to start fresh as requested
+        db_execute(conn, 'DROP TABLE IF EXISTS users, patients, messages, notifications, medical_images CASCADE')
+        conn.commit()
     else:
         print("\n" + "!"*50)
         print("[SYSTEM] Database Status: USING TEMPORARY LOCAL SQLITE")
@@ -442,6 +445,13 @@ def register():
                     user = db_execute(conn, "SELECT id FROM users WHERE username = ?", (username,)).fetchone()
                     if user:
                         db_execute(conn, "UPDATE patients SET patient_user_id = ? WHERE patient_mobile = ?", (user['id'], mobile_number))
+                
+                conn.commit()
+                conn.close()
+                
+                # Clear session variables
+                session.pop('registration_otp', None)
+                session.pop('registration_mobile', None)
                 
                 flash('Registration successful! Please login.', 'success')
                 return redirect(url_for('login'))

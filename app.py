@@ -216,6 +216,18 @@ def init_db():
     conn = get_db_connection()
     is_postgres = DATABASE_URL is not None
     
+    # HEARBEAT: Print database status for verification
+    if is_postgres:
+        print("\n" + "="*50)
+        print("✅ [SYSTEM] Database Status: CONNECTED TO PERMANENT POSTGRESQL")
+        print("="*50 + "\n", flush=True)
+    else:
+        print("\n" + "!"*50)
+        print("⚠️ [SYSTEM] Database Status: USING TEMPORARY LOCAL SQLITE")
+        print("!"*50 + "\n", flush=True)
+    conn = get_db_connection()
+    is_postgres = DATABASE_URL is not None
+    
     # Use SERIAL for PostgreSQL, AUTOINCREMENT for SQLite
     pk_style = "SERIAL PRIMARY KEY" if is_postgres else "INTEGER PRIMARY KEY AUTOINCREMENT"
     

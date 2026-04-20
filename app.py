@@ -14,6 +14,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from backend.chatbot_logic import process_chatbot_query
 import psycopg2
 from psycopg2 import extras
+import traceback
 
 # PDF and Report Generation
 from reportlab.lib.pagesizes import letter
@@ -218,14 +219,14 @@ def init_db():
     conn = get_db_connection()
     is_postgres = DATABASE_URL is not None
     
-    # HEARBEAT: Print database status for verification
+    # HEARTBEAT: Print database status for verification
     if is_postgres:
         print("\n" + "="*50)
-        print("✅ [SYSTEM] Database Status: CONNECTED TO PERMANENT POSTGRESQL")
+        print("[SYSTEM] Database Status: CONNECTED TO PERMANENT POSTGRESQL")
         print("="*50 + "\n", flush=True)
     else:
         print("\n" + "!"*50)
-        print("⚠️ [SYSTEM] Database Status: USING TEMPORARY LOCAL SQLITE")
+        print("[SYSTEM] Database Status: USING TEMPORARY LOCAL SQLITE")
         print("!"*50 + "\n", flush=True)
 
     # Use SERIAL for PostgreSQL, AUTOINCREMENT for SQLite
@@ -394,8 +395,7 @@ def create_notification(user_id, message, link="#", patient_id=None, conn=None):
         conn.commit()
         conn.close()
 
-# Initialize database on startup
-init_db()
+# Initialize database on startup handled at the end of the file
 
 @app.route('/privacy')
 def privacy():
@@ -1652,9 +1652,18 @@ def api_analyze_scan(patient_id):
         'severity': severity
     })
 
-# Initialize database on startup before running
-init_db()
-print(">>> Database initialized successfully", flush=True)
+# Defensive Database Initialization
+try:
+    print(">>> Starting database initialization...", flush=True)
+    init_db()
+    print(">>> Database initialized successfully!", flush=True)
+except Exception as e:
+    print("\n" + "!"*60)
+    print("❌ CRITICAL ERROR DURING DATABASE INITIALIZATION:")
+    print(str(e))
+    print("="*60)
+    traceback.print_exc()
+    print("!"*60 + "\n", flush=True)
 
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    socketio.run(app, host='0.0.0.0', port=5000, debug=False)

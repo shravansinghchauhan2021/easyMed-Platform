@@ -1152,7 +1152,7 @@ def case_history():
         params.append(f'%{search_query}%')
         
     if sort_by == 'emergency':
-        query += ' ORDER BY CASE WHEN priority = "Emergency" THEN 0 ELSE 1 END, id DESC'
+        query += " ORDER BY CASE WHEN priority = 'Emergency' THEN 0 ELSE 1 END, id DESC"
     else:
         query += ' ORDER BY id DESC'
         
@@ -1190,17 +1190,17 @@ def specialist_dashboard():
         return redirect(url_for('login'))
         
     conn = get_db_connection()
-    pending_patients = db_execute(conn, 'SELECT p.*, r.username as rural_doctor_name, r.status as doctor_status \
+    pending_patients = db_execute(conn, "SELECT p.*, r.username as rural_doctor_name, r.status as doctor_status \
                                     FROM patients p \
                                     JOIN users r ON p.rural_doctor_id = r.id \
                                     WHERE p.status = ? AND p.specialist_type = ? AND (p.specialist_id = ? OR p.specialist_id IS NULL) \
-                                    ORDER BY CASE WHEN p.priority = "Emergency" THEN 0 ELSE 1 END, p.id DESC', ('Pending', session['profession'], session['user_id'])).fetchall()
+                                    ORDER BY CASE WHEN p.priority = 'Emergency' THEN 0 ELSE 1 END, p.id DESC", ('Pending', session['profession'], session['user_id'])).fetchall()
     
-    accepted_patients = db_execute(conn, 'SELECT p.*, r.username as rural_doctor_name \
+    accepted_patients = db_execute(conn, "SELECT p.*, r.username as rural_doctor_name \
                                       FROM patients p \
                                       JOIN users r ON p.rural_doctor_id = r.id \
                                       WHERE p.specialist_id = ? AND p.status IN (?, ?, ?) \
-                                      ORDER BY CASE WHEN p.priority = "Emergency" THEN 0 ELSE 1 END, p.id DESC', 
+                                      ORDER BY CASE WHEN p.priority = 'Emergency' THEN 0 ELSE 1 END, p.id DESC", 
                                       (session['user_id'], 'Accepted', 'Reviewed', 'Completed')).fetchall()
                                       
     # Specialty Statistics (Assigned to current user)

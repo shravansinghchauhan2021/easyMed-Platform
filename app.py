@@ -138,7 +138,11 @@ def init_db():
             ('status', "TEXT DEFAULT 'Pending'"),
             ('headache_severity', 'TEXT'),
             ('consciousness_level', 'TEXT'),
-            ('specialist_id', 'INTEGER')
+            ('specialist_id', 'INTEGER'),
+            ('report_file_path', 'TEXT'),
+            ('report_file', 'TEXT'),
+            ('final_diagnosis', 'TEXT'),
+            ('final_recommendations', 'TEXT')
         ]
         for col_name, col_type in patients_cols:
             try:
@@ -1686,7 +1690,9 @@ def generate_report(patient_id):
         # Nuclear Tech: Try both columns simultaneously for maximum compatibility
         patient = db_execute(conn, 'SELECT id, report_file_path, report_file FROM patients WHERE id = ?', (patient_id,)).fetchone()
     except Exception as e:
-        print(f">>> [DOWNLOAD-WARN] Schema discrepancy: {e}. Trying legacy query.", flush=True)
+        # CRITICAL: Reset the transaction state before attempting the legacy fallback
+        if conn: conn.rollback()
+        print(f">>> [DOWNLOAD-WARN] Schema discrepancy: {e}. Resetting transaction for legacy query.", flush=True)
         try:
             # Fallback to absolute legacy version
             patient = db_execute(conn, 'SELECT id, report_file FROM patients WHERE id = ?', (patient_id,)).fetchone()

@@ -170,8 +170,8 @@ def query_openai(prompt, system_context, user_id=None):
         )
 
     keys = load_config()
-    api_key = keys.get('GEMINI_API_KEY', '')
-    openai_key = os.getenv('OPENAI_API_KEY', '') # Load backup brain key
+    api_key = keys.get('GEMINI_API_KEY', '').strip()
+    openai_key = os.getenv('OPENAI_API_KEY', '').strip() # Load backup brain key
     
     if api_key.startswith('AIza'):
         # --- DUAL-HEADED ENGINE: Try multiple Gemini variants, then Fallback to OpenAI ---

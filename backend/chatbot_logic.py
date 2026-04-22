@@ -172,7 +172,7 @@ def query_openai(prompt, system_context, user_id=None):
     api_key = keys.get('GEMINI_API_KEY', '')
     
     if api_key.startswith('AIza'):
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+        url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key}"
         headers = { "Content-Type": "application/json" }
         full_text = f"System Context: {system_context}\n\nUser Question: {prompt}"
         

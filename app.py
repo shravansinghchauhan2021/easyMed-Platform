@@ -941,8 +941,18 @@ def add_patient():
 
         conn = get_db_connection()
         
-        # Try to find corresponding Patient Account
-        patient_user = db_execute(conn, "SELECT id FROM users WHERE mobile_number = ? AND profession = 'Patient'", (patient_mobile,)).fetchone()
+        # Robust Mobile Normalization: Link accounts even if formatting differs (spaces, +, dashes)
+        clean_mobile = "".join(filter(str.isdigit, patient_mobile))
+        patient_user = None
+        if len(clean_mobile) >= 10:
+            last_10 = clean_mobile[-10:]
+            # Search for any user whose number ends in these same 10 digits
+            patient_user = db_execute(conn, "SELECT id FROM users WHERE mobile_number LIKE ? AND profession = 'Patient'", (f'%{last_10}',)).fetchone()
+        
+        # Fallback to exact match if normalization failed or was ambiguous
+        if not patient_user:
+            patient_user = db_execute(conn, "SELECT id FROM users WHERE mobile_number = ? AND profession = 'Patient'", (patient_mobile,)).fetchone()
+            
         patient_user_id = patient_user['id'] if patient_user else None
 
         # For Postgres, we can use INSERT ... RETURNING id

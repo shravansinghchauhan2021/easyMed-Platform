@@ -1642,7 +1642,7 @@ def complete_case(patient_id):
         report_filename = f"report_{patient_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
         pdf_status = generate_pdf_report(patient_id, report_filename, final_diagnosis, recommendations)
         if not pdf_status:
-            print(">>> [TRANS-WARN] PDF Generation failed, but case is marked completed.", flush=True)
+            raise Exception("PDF Generation Engine failed to create the document on the server.")
         
         # --- Step 3: Sync Report Filename ---
         try:

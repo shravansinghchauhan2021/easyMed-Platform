@@ -1679,12 +1679,45 @@ def complete_case(patient_id):
 @app.route('/generate_report/<int:patient_id>')
 def generate_report(patient_id):
     if 'user_id' not in session: return redirect(url_for('login'))
+    
     conn = get_db_connection()
-    patient = db_execute(conn, 'SELECT report_file_path FROM patients WHERE id = ?', (patient_id,)).fetchone()
+    patient = None
+    try:
+        # Nuclear Tech: Try both columns simultaneously for maximum compatibility
+        patient = db_execute(conn, 'SELECT id, report_file_path, report_file FROM patients WHERE id = ?', (patient_id,)).fetchone()
+    except Exception as e:
+        print(f">>> [DOWNLOAD-WARN] Schema discrepancy: {e}. Trying legacy query.", flush=True)
+        try:
+            # Fallback to absolute legacy version
+            patient = db_execute(conn, 'SELECT id, report_file FROM patients WHERE id = ?', (patient_id,)).fetchone()
+        except Exception as e2:
+            print(f">>> [DOWNLOAD-CRITICAL] Both queries failed: {e2}", flush=True)
+            conn.close()
+            return f"System Schema Error: {e2}", 500
+            
     conn.close()
-    if patient and patient['report_file_path']:
-        return send_from_directory(app.config['UPLOAD_FOLDER'], patient['report_file_path'])
-    return "Report not found", 404
+    
+    if not patient:
+        return "Case logic failure: Patient record missing.", 404
+        
+    # Dual-Headed field check
+    final_path = None
+    try:
+        final_path = patient['report_file_path'] if 'report_file_path' in patient.keys() else None
+    except: pass
+    
+    if not final_path:
+        try:
+            final_path = patient['report_file'] if 'report_file' in patient.keys() else None
+        except: pass
+
+    if final_path:
+        # Security sanitize the path
+        filename = os.path.basename(final_path)
+        print(f">>> [DOWNLOAD-SUCCESS] Serving report: {filename}", flush=True)
+        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+        
+    return "Report file pointer is empty in database. Please re-complete the case.", 404
 
 @app.route('/api/generate_summary/<int:patient_id>', methods=['GET'])
 def api_generate_summary(patient_id):

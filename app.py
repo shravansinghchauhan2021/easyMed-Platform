@@ -151,21 +151,10 @@ def init_db():
             conn.commit()
         except: pass
     
-    # 3. Create Medical Images Table
-    db_execute(conn, f'''
-        CREATE TABLE IF NOT EXISTS medical_images (
-            id {pk_style}, 
-            patient_id INTEGER, 
-            file_path TEXT, 
-            modality TEXT, 
-            sequence_type TEXT, 
-            uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    conn.commit()
+    # 3. Create Additional Tables
+    for table_sql in [
         f'CREATE TABLE IF NOT EXISTS messages (id {pk_style}, patient_id INTEGER, sender_id INTEGER, message TEXT, file_path TEXT, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)',
-        f'CREATE TABLE IF NOT EXISTS notifications (id {pk_style}, user_id INTEGER, patient_id INTEGER, message TEXT, link TEXT, read_status BOOLEAN DEFAULT FALSE, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)',
-        f'CREATE TABLE IF NOT EXISTS medical_images (id {pk_style}, patient_id INTEGER, file_path TEXT, modality TEXT, sequence_type TEXT, uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)'
+        f'CREATE TABLE IF NOT EXISTS notifications (id {pk_style}, user_id INTEGER, patient_id INTEGER, message TEXT, link TEXT, read_status BOOLEAN DEFAULT FALSE, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)'
     ]:
         db_execute(conn, table_sql)
         conn.commit()

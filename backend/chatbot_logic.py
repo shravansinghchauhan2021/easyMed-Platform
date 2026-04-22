@@ -172,43 +172,57 @@ def query_openai(prompt, system_context, user_id=None):
     api_key = keys.get('GEMINI_API_KEY', '')
     
     if api_key.startswith('AIza'):
-        url = f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={api_key}"
+        # --- AUTO-ADAPTIVE ENGINE: Try multiple versions/models until success ---
+        endpoints = [
+            ("v1", "gemini-1.5-flash"),
+            ("v1beta", "gemini-1.5-flash-latest"),
+            ("v1", "gemini-pro"),
+            ("v1beta", "gemini-pro")
+        ]
+        
         headers = { "Content-Type": "application/json" }
         full_text = f"System Context: {system_context}\n\nUser Question: {prompt}"
         
         contents = []
         if user_id:
-            # Load up to last 10 messages from session memory
             history = USER_CHAT_HISTORY.get(user_id, [])
             contents.extend(history)
-            
         contents.append({"role": "user", "parts": [{"text": full_text}]})
         
         data = {
             "contents": contents,
             "generationConfig": {"temperature": 0.7}
         }
-        try:
-            response = requests.post(url, headers=headers, json=data, timeout=30)
-            res_json = response.json()
-            if 'candidates' in res_json and len(res_json['candidates']) > 0:
-                answer = res_json['candidates'][0]['content']['parts'][0]['text']
-                if user_id:
-                    # Save prompt and answer to memory
-                    history = USER_CHAT_HISTORY.get(user_id, [])
-                    history.append({"role": "user", "parts": [{"text": prompt}]})
-                    history.append({"role": "model", "parts": [{"text": answer}]})
-                    if len(history) > 10:
-                        history = history[-10:] # keep last 5 turns
-                    USER_CHAT_HISTORY[user_id] = history
-                return answer
-            elif 'error' in res_json:
-                return f"Gemini Error: {res_json['error'].get('message', 'Unknown API error')}"
-            return "Error: Unexpected Gemini response format."
-        except requests.exceptions.Timeout:
-            return "Error: AI service timed out. Check your connection."
-        except Exception as e:
-            return f"Error communicating with AI service: {str(e)}"
+
+        last_error = "Unknown Error"
+        for version, model in endpoints:
+            url = f"https://generativelanguage.googleapis.com/{version}/models/{model}:generateContent?key={api_key}"
+            try:
+                print(f">>> [AI ADAPT] Trying {version}/{model}...", flush=True)
+                response = requests.post(url, headers=headers, json=data, timeout=12)
+                res_json = response.json()
+                
+                if response.status_code == 200 and 'candidates' in res_json:
+                    answer = res_json['candidates'][0]['content']['parts'][0]['text']
+                    if user_id:
+                        history = USER_CHAT_HISTORY.get(user_id, [])
+                        history.append({"role": "user", "parts": [{"text": prompt}]})
+                        history.append({"role": "model", "parts": [{"text": answer}]})
+                        if len(history) > 10: history = history[-10:]
+                        USER_CHAT_HISTORY[user_id] = history
+                    return answer
+                
+                # If not a success, capture error and try next endpoint
+                if 'error' in res_json:
+                    last_error = res_json['error'].get('message', 'Unknown API error')
+                else:
+                    last_error = f"HTTP {response.status_code}"
+                print(f"    [FAIL] {last_error}", flush=True)
+            except Exception as e:
+                last_error = str(e)
+                continue
+        
+        return f"Gemini Error (Tried all endpoints): {last_error}"
     
     # Fallback to OpenAI API for sk-... keys
     else:

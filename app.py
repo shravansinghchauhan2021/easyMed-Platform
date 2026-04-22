@@ -113,31 +113,56 @@ def init_db():
     ''')
     conn.commit()
     
-    if not is_postgres:
+    # --- Production Schema Hardening (Ensure all columns exist) ---
+    if is_postgres:
+        # Users Table Maintenance
+        users_cols = [
+            ('mobile_number', 'TEXT'),
+            ('status', "TEXT DEFAULT 'Offline'")
+        ]
+        for col_name, col_type in users_cols:
+            try:
+                db_execute(conn, f'ALTER TABLE users ADD COLUMN {col_name} {col_type}')
+                conn.commit()
+                print(f"[SCHEMA] Added {col_name} to users table.")
+            except: 
+                conn.rollback() # Column likely exists
+
+        # Patients Table Maintenance
+        patients_cols = [
+            ('patient_user_id', 'INTEGER'),
+            ('priority_level', "TEXT DEFAULT 'Normal'"),
+            ('status', "TEXT DEFAULT 'Pending'"),
+            ('headache_severity', 'TEXT'),
+            ('consciousness_level', 'TEXT'),
+            ('specialist_id', 'INTEGER')
+        ]
+        for col_name, col_type in patients_cols:
+            try:
+                db_execute(conn, f'ALTER TABLE patients ADD COLUMN {col_name} {col_type}')
+                conn.commit()
+                print(f"[SCHEMA] Added {col_name} to patients table.")
+            except: 
+                conn.rollback() # Column likely exists
+    else:
+        # SQLite Maintenance (Backward compat)
         try:
             db_execute(conn, 'ALTER TABLE users ADD COLUMN mobile_number TEXT')
             conn.commit()
         except: pass
     
+    # 3. Create Medical Images Table
     db_execute(conn, f'''
-        CREATE TABLE IF NOT EXISTS patients (
-            id {pk_style}, patient_name TEXT, patient_mobile TEXT, patient_user_id INTEGER,
-            age INTEGER, gender TEXT, blood_pressure TEXT, heart_rate TEXT, oxygen_level TEXT,
-            problem_description TEXT, report_file TEXT, priority TEXT DEFAULT 'Normal',
-            priority_level TEXT DEFAULT 'Normal', risk_level TEXT DEFAULT 'Low',
-            predicted_condition TEXT DEFAULT 'General Consultation', ai_prediction TEXT,
-            scan_analysis_report TEXT, consciousness_level TEXT, speech_condition TEXT,
-            motor_function TEXT, headache_severity TEXT, seizure_history TEXT,
-            tumor_details TEXT, cancer_history TEXT, kidney_function TEXT, urine_reports TEXT,
-            skin_condition TEXT, rash_description TEXT, breathing_condition TEXT,
-            final_diagnosis TEXT, final_recommendations TEXT, assigned_doctor_id INTEGER,
-            rural_doctor_id INTEGER, specialist_id INTEGER, specialist_type TEXT DEFAULT 'Neurologist',
-            status TEXT DEFAULT 'Pending', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        CREATE TABLE IF NOT EXISTS medical_images (
+            id {pk_style}, 
+            patient_id INTEGER, 
+            file_path TEXT, 
+            modality TEXT, 
+            sequence_type TEXT, 
+            uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     conn.commit()
-    
-    for table_sql in [
         f'CREATE TABLE IF NOT EXISTS messages (id {pk_style}, patient_id INTEGER, sender_id INTEGER, message TEXT, file_path TEXT, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)',
         f'CREATE TABLE IF NOT EXISTS notifications (id {pk_style}, user_id INTEGER, patient_id INTEGER, message TEXT, link TEXT, read_status BOOLEAN DEFAULT FALSE, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)',
         f'CREATE TABLE IF NOT EXISTS medical_images (id {pk_style}, patient_id INTEGER, file_path TEXT, modality TEXT, sequence_type TEXT, uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)'
@@ -869,90 +894,88 @@ def add_patient():
     if 'user_id' not in session or session.get('profession') != 'Rural Doctor':
         return redirect(url_for('login'))
 
-    patient_name = request.form['patient_name']
-    patient_mobile = request.form.get('patient_mobile', '')
-    age_raw = request.form.get('age', '')
-    age = int(age_raw) if age_raw.strip().isdigit() else None
-    
-    gender = request.form.get('gender', 'Other')
-    specialist_type = request.form.get('specialist_type', 'Neurologist')
-    blood_pressure = request.form.get('blood_pressure', '')
-    heart_rate = request.form.get('heart_rate', '')
-    oxygen_level = request.form.get('oxygen_level', '')
-    problem_description = request.form.get('problem_description', '')
-    priority = request.form.get('priority', 'Normal')
-    
-    # AI Assistance: Auto-Priority and Suggestion
-    ai_priority = detect_emergency_ai(problem_description, 
-                                     request.form.get('consciousness_level', 'Alert'),
-                                     oxygen_level, heart_rate)
-    
-    if ai_priority == 'Emergency':
-        priority = 'Emergency'
-        flash('AI System detected a potential emergency and set priority to high.', 'warning')
+    conn = None
+    try:
+        patient_name = request.form['patient_name']
+        patient_mobile = request.form.get('patient_mobile', '')
+        age_raw = request.form.get('age', '')
+        age = int(age_raw) if age_raw.strip().isdigit() else None
+        
+        gender = request.form.get('gender', 'Other')
+        specialist_type = request.form.get('specialist_type', 'Neurologist')
+        blood_pressure = request.form.get('blood_pressure', '')
+        heart_rate = request.form.get('heart_rate', '')
+        oxygen_level = request.form.get('oxygen_level', '')
+        problem_description = request.form.get('problem_description', '')
+        priority = request.form.get('priority', 'Normal')
+        
+        # AI Assistance: Auto-Priority and Suggestion
+        ai_priority = detect_emergency_ai(problem_description, 
+                                         request.form.get('consciousness_level', 'Alert'),
+                                         oxygen_level, heart_rate)
+        
+        if ai_priority == 'Emergency':
+            priority = 'Emergency'
+            flash('AI System detected a potential emergency and set priority to high.', 'warning')
 
-    # Smart Allocation
-    specialist_id, assigned_doctor_name, is_online = find_best_specialist(specialist_type)
-    
-    # Specialty parameters
-    consciousness_level = request.form.get('consciousness_level', 'Alert')
-    speech_condition = request.form.get('speech_condition', 'Normal')
-    motor_function = request.form.get('motor_function', 'Normal')
-    skin_condition = request.form.get('skin_condition', '')
-    rash_description = request.form.get('rash_description', '')
-    breathing_condition = request.form.get('breathing_condition', '')
+        # Smart Allocation
+        specialist_id, assigned_doctor_name, is_online = find_best_specialist(specialist_type)
+        
+        # Specialty parameters
+        consciousness_level = request.form.get('consciousness_level', 'Alert')
+        speech_condition = request.form.get('speech_condition', 'Normal')
+        motor_function = request.form.get('motor_function', 'Normal')
+        
+        seizure_history = request.form.get('seizure_history', 'No')
+        tumor_details = request.form.get('tumor_details', '')
+        cancer_history = request.form.get('cancer_history', '')
+        kidney_function = request.form.get('kidney_function', '')
+        urine_reports = request.form.get('urine_reports', '')
+        skin_condition = request.form.get('skin_condition', '')
+        rash_description = request.form.get('rash_description', '')
+        breathing_condition = request.form.get('breathing_condition', '')
 
-    seizure_history = request.form.get('seizure_history', 'No')
-    tumor_details = request.form.get('tumor_details', '')
-    cancer_history = request.form.get('cancer_history', '')
-    kidney_function = request.form.get('kidney_function', '')
-    urine_reports = request.form.get('urine_reports', '')
-    skin_condition = request.form.get('skin_condition', '')
-    rash_description = request.form.get('rash_description', '')
-    breathing_condition = request.form.get('breathing_condition', '')
+        # Ensure headache_severity is safe for both TEXT and logic (default to '0')
+        headache_severity = request.form.get('headache_severity', '0')
+        if not str(headache_severity).strip():
+            headache_severity = '0'
 
-    # Ensure headache_severity is safe for both TEXT and logic (default to '0')
-    headache_severity = request.form.get('headache_severity', '0')
-    if not str(headache_severity).strip():
-        headache_severity = '0'
+        report_file = ''
+        if 'report_file' in request.files:
+            file = request.files['report_file']
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{filename}"
+                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                report_file = filename
 
-    report_file = ''
-    if 'report_file' in request.files:
-        file = request.files['report_file']
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{filename}"
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            report_file = filename
+        conn = get_db_connection()
+        
+        # Try to find corresponding Patient Account
+        patient_user = db_execute(conn, "SELECT id FROM users WHERE mobile_number = ? AND profession = 'Patient'", (patient_mobile,)).fetchone()
+        patient_user_id = patient_user['id'] if patient_user else None
 
-    conn = get_db_connection()
-    
-    # Try to find corresponding Patient Account
-    patient_user = db_execute(conn, "SELECT id FROM users WHERE mobile_number = ? AND profession = 'Patient'", (patient_mobile,)).fetchone()
-    patient_user_id = patient_user['id'] if patient_user else None
-
-    # For Postgres, we can use INSERT ... RETURNING id
-    is_postgres = DATABASE_URL is not None
-    insert_sql = '''
-        INSERT INTO patients (
+        # For Postgres, we can use INSERT ... RETURNING id
+        is_postgres = DATABASE_URL is not None
+        insert_sql = '''
+            INSERT INTO patients (
+                patient_name, patient_mobile, patient_user_id, age, gender, blood_pressure, heart_rate, oxygen_level, 
+                problem_description, report_file, rural_doctor_id, priority, 
+                specialist_type, specialist_id, consciousness_level, speech_condition, 
+                motor_function, headache_severity, seizure_history, tumor_details, 
+                cancer_history, kidney_function, urine_reports, skin_condition, 
+                rash_description, breathing_condition, priority_level, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        '''
+        params = (
             patient_name, patient_mobile, patient_user_id, age, gender, blood_pressure, heart_rate, oxygen_level, 
-            problem_description, report_file, rural_doctor_id, priority, 
+            problem_description, report_file, session['user_id'], priority, 
             specialist_type, specialist_id, consciousness_level, speech_condition, 
             motor_function, headache_severity, seizure_history, tumor_details, 
             cancer_history, kidney_function, urine_reports, skin_condition, 
-            rash_description, breathing_condition, priority_level, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    '''
-    params = (
-        patient_name, patient_mobile, patient_user_id, age, gender, blood_pressure, heart_rate, oxygen_level, 
-        problem_description, report_file, session['user_id'], priority, 
-        specialist_type, specialist_id, consciousness_level, speech_condition, 
-        motor_function, headache_severity, seizure_history, tumor_details, 
-        cancer_history, kidney_function, urine_reports, skin_condition, 
-        rash_description, breathing_condition, priority, 'Pending'
-    )
-    
-    try:
+            rash_description, breathing_condition, priority, 'Pending'
+        )
+        
         if is_postgres:
             cur = db_execute(conn, insert_sql + ' RETURNING id', params)
             patient_id = cur.fetchone()['id']
@@ -1007,11 +1030,15 @@ def add_patient():
         flash(success_msg, 'success')
         return redirect(url_for('rural_dashboard'))
     except Exception as e:
-        if conn:
-            conn.rollback()
-            conn.close()
-        flash(f"Error submitting patient case: {str(e)}", 'error')
+        error_msg = f"CRITICAL SUBMISSION ERROR: {str(e)}"
+        print(error_msg)
         traceback.print_exc()
+        if conn:
+            try: conn.rollback()
+            except: pass
+            try: conn.close()
+            except: pass
+        flash(error_msg, 'error')
         return redirect(url_for('rural_dashboard'))
 
 @app.route('/upload_imaging/<int:patient_id>', methods=['POST'])

@@ -103,20 +103,30 @@ def perform_web_search(query):
 
 def load_config():
     """Load API keys from config.json or environment variables."""
-    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config.json')
-    keys = {"GEMINI_API_KEY": GEMINI_API_KEY, "SERPAPI_KEY": SERPAPI_KEY}
+    # START WITH ENVIRONMENT VARIABLES (Priority 1)
+    keys = {
+        "GEMINI_API_KEY": os.getenv("GEMINI_API_KEY", os.getenv("OPENAI_API_KEY", "")),
+        "SERPAPI_KEY": os.getenv("SERPAPI_KEY", "")
+    }
     
+    # Only fall back to config.json if the environment variable is empty
+    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config.json')
     if os.path.exists(config_path):
         try:
             with open(config_path, 'r') as f:
                 file_keys = json.load(f)
-                # Map old names to new standard if they exist
-                if "OPENAI_API_KEY" in file_keys and "GEMINI_API_KEY" not in file_keys:
-                    file_keys["GEMINI_API_KEY"] = file_keys["OPENAI_API_KEY"]
                 
-                for k in keys:
-                    if file_keys.get(k) and "Paste_Your" not in file_keys[k]:
-                        keys[k] = file_keys[k]
+                # Check GEMINI_API_KEY
+                if not keys["GEMINI_API_KEY"] or "REMOVED" in keys["GEMINI_API_KEY"]:
+                    val = file_keys.get("GEMINI_API_KEY", file_keys.get("OPENAI_API_KEY", ""))
+                    if val and "Paste_Your" not in val and "REMOVED" not in val:
+                        keys["GEMINI_API_KEY"] = val
+                
+                # Check SERPAPI_KEY
+                if not keys["SERPAPI_KEY"] or "your_serpapi" in keys["SERPAPI_KEY"]:
+                    val = file_keys.get("SERPAPI_KEY", "")
+                    if val and "your_serpapi" not in val:
+                        keys["SERPAPI_KEY"] = val
         except:
             pass
     return keys
@@ -124,6 +134,7 @@ def load_config():
 def is_ai_configured():
     keys = load_config()
     key = keys.get("GEMINI_API_KEY")
+    # Must be non-empty AND not a placeholder
     if not key or "your_openai_key" in key or "Paste_Your" in key or "REMOVED" in key:
         return False
     return True

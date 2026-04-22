@@ -898,7 +898,10 @@ def add_patient():
     consciousness_level = request.form.get('consciousness_level', 'Alert')
     speech_condition = request.form.get('speech_condition', 'Normal')
     motor_function = request.form.get('motor_function', 'Normal')
-    headache_severity = request.form.get('headache_severity', 0)
+    skin_condition = request.form.get('skin_condition', '')
+    rash_description = request.form.get('rash_description', '')
+    breathing_condition = request.form.get('breathing_condition', '')
+
     seizure_history = request.form.get('seizure_history', 'No')
     tumor_details = request.form.get('tumor_details', '')
     cancer_history = request.form.get('cancer_history', '')
@@ -907,6 +910,11 @@ def add_patient():
     skin_condition = request.form.get('skin_condition', '')
     rash_description = request.form.get('rash_description', '')
     breathing_condition = request.form.get('breathing_condition', '')
+
+    # Ensure headache_severity is safe for both TEXT and logic (default to '0')
+    headache_severity = request.form.get('headache_severity', '0')
+    if not str(headache_severity).strip():
+        headache_severity = '0'
 
     report_file = ''
     if 'report_file' in request.files:
@@ -944,59 +952,67 @@ def add_patient():
         rash_description, breathing_condition, priority, 'Pending'
     )
     
-    if is_postgres:
-        cur = db_execute(conn, insert_sql + ' RETURNING id', params)
-        patient_id = cur.fetchone()['id']
-    else:
-        cur = db_execute(conn, insert_sql, params)
-        patient_id = cur.lastrowid
-    
-    # Handle initial medical images if provided
-    if 'medical_images' in request.files:
-        files = request.files.getlist('medical_images')
-        for file in files:
-            if file and allowed_file(file.filename):
-                filename = secure_filename(file.filename)
-                filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{filename}"
-                file.save(os.path.join(app.config['IMAGING_FOLDER'], filename))
-                
-                ext = filename.rsplit('.', 1)[1].lower()
-                modality = request.form.get('dicom_modality', 'CT Scan') if ext == 'dcm' else 'EEG' if ext in ['edf', 'csv'] else 'Other'
-                
-                db_execute(conn,
-                    'INSERT INTO medical_images (patient_id, file_path, modality, sequence_type) VALUES (?, ?, ?, ?)',
-                    (patient_id, filename, modality, 'Standard')
-                )
-    
-    # Calculate Risk and Prediction
-    risk_level = calculate_risk_score(problem_description, blood_pressure, oxygen_level, heart_rate, consciousness_level)
-    predicted_condition = predict_disease(problem_description, specialist_type)
-    
-    # Update patient with AI results
-    db_execute(conn, 'UPDATE patients SET risk_level = ?, predicted_condition = ? WHERE id = ?', 
-                (risk_level, predicted_condition, patient_id))
-    
-    # Personalized Notification
-    msg = f"New {specialist_type} Case: {patient_name}"
-    if priority == 'Emergency':
-        msg = f"🚨 {specialist_type.upper()} EMERGENCY: {patient_name}"
-    
-    if specialist_id:
-        status_msg = "Online" if is_online else "Waiting"
-        notif_msg = f"{msg} (Assigned to you: {status_msg})"
-        create_notification(specialist_id, notif_msg, url_for('specialist_dashboard'), patient_id=patient_id, conn=conn)
-    else:
-        # Fallback: Notify all specialists
-        specialists = db_execute(conn, 'SELECT id FROM users WHERE profession = ?', (specialist_type,)).fetchall()
-        for spec in specialists:
-            create_notification(spec['id'], msg, url_for('specialist_dashboard'), patient_id=patient_id, conn=conn)
+    try:
+        if is_postgres:
+            cur = db_execute(conn, insert_sql + ' RETURNING id', params)
+            patient_id = cur.fetchone()['id']
+        else:
+            cur = db_execute(conn, insert_sql, params)
+            patient_id = cur.lastrowid
         
-    conn.commit()
-    conn.close()
-    
-    success_msg = f"Patient case added successfully! Assigned to Dr. {assigned_doctor_name}" if assigned_doctor_name else "Patient case added successfully!"
-    flash(success_msg, 'success')
-    return redirect(url_for('rural_dashboard'))
+        # Handle initial medical images if provided
+        if 'medical_images' in request.files:
+            files = request.files.getlist('medical_images')
+            for file in files:
+                if file and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{filename}"
+                    file.save(os.path.join(app.config['IMAGING_FOLDER'], filename))
+                    
+                    ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'other'
+                    modality = request.form.get('dicom_modality', 'CT Scan') if ext == 'dcm' else 'EEG' if ext in ['edf', 'csv'] else 'Other'
+                    
+                    db_execute(conn,
+                        'INSERT INTO medical_images (patient_id, file_path, modality, sequence_type) VALUES (?, ?, ?, ?)',
+                        (patient_id, filename, modality, 'Standard')
+                    )
+        
+        # Calculate Risk and Prediction
+        risk_level = calculate_risk_score(problem_description, blood_pressure, oxygen_level, heart_rate, consciousness_level)
+        predicted_condition = predict_disease(problem_description, specialist_type)
+        
+        # Update patient with AI results
+        db_execute(conn, 'UPDATE patients SET risk_level = ?, predicted_condition = ? WHERE id = ?', 
+                    (risk_level, predicted_condition, patient_id))
+        
+        # Personalized Notification
+        msg = f"New {specialist_type} Case: {patient_name}"
+        if priority == 'Emergency':
+            msg = f"🚨 {specialist_type.upper()} EMERGENCY: {patient_name}"
+        
+        if specialist_id:
+            status_msg = "Online" if is_online else "Waiting"
+            notif_msg = f"{msg} (Assigned to you: {status_msg})"
+            create_notification(specialist_id, notif_msg, url_for('specialist_dashboard'), patient_id=patient_id, conn=conn)
+        else:
+            # Fallback: Notify all specialists
+            specialists = db_execute(conn, 'SELECT id FROM users WHERE profession = ?', (specialist_type,)).fetchall()
+            for spec in specialists:
+                create_notification(spec['id'], msg, url_for('specialist_dashboard'), patient_id=patient_id, conn=conn)
+            
+        conn.commit()
+        conn.close()
+        
+        success_msg = f"Patient case added successfully! Assigned to Dr. {assigned_doctor_name}" if assigned_doctor_name else "Patient case added successfully!"
+        flash(success_msg, 'success')
+        return redirect(url_for('rural_dashboard'))
+    except Exception as e:
+        if conn:
+            conn.rollback()
+            conn.close()
+        flash(f"Error submitting patient case: {str(e)}", 'error')
+        traceback.print_exc()
+        return redirect(url_for('rural_dashboard'))
 
 @app.route('/upload_imaging/<int:patient_id>', methods=['POST'])
 def upload_imaging(patient_id):

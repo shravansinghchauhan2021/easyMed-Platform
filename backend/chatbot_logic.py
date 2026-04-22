@@ -104,12 +104,16 @@ def perform_web_search(query):
 def load_config():
     """Load API keys from config.json or environment variables."""
     config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config.json')
-    keys = {"OPENAI_API_KEY": OPENAI_API_KEY, "SERPAPI_KEY": SERPAPI_KEY}
+    keys = {"GEMINI_API_KEY": GEMINI_API_KEY, "SERPAPI_KEY": SERPAPI_KEY}
     
     if os.path.exists(config_path):
         try:
             with open(config_path, 'r') as f:
                 file_keys = json.load(f)
+                # Map old names to new standard if they exist
+                if "OPENAI_API_KEY" in file_keys and "GEMINI_API_KEY" not in file_keys:
+                    file_keys["GEMINI_API_KEY"] = file_keys["OPENAI_API_KEY"]
+                
                 for k in keys:
                     if file_keys.get(k) and "Paste_Your" not in file_keys[k]:
                         keys[k] = file_keys[k]
@@ -119,8 +123,8 @@ def load_config():
 
 def is_ai_configured():
     keys = load_config()
-    key = keys["OPENAI_API_KEY"]
-    if not key or "your_openai_key" in key or "Paste_Your" in key:
+    key = keys.get("GEMINI_API_KEY")
+    if not key or "your_openai_key" in key or "Paste_Your" in key or "REMOVED" in key:
         return False
     return True
 
@@ -154,7 +158,7 @@ def query_openai(prompt, system_context, user_id=None):
             "To enable my full multi-specialty intelligence, please add your OpenAI API key to `config.json`."
         )
 
-    api_key = keys['OPENAI_API_KEY']
+    api_key = keys.get('GEMINI_API_KEY', '')
     
     if api_key.startswith('AIza'):
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"

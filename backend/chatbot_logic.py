@@ -174,13 +174,13 @@ def query_openai(prompt, system_context, user_id=None):
     openai_key = os.getenv('OPENAI_API_KEY', '').strip() # Load backup brain key
     
     if api_key.startswith('AIza'):
-        # --- DUAL-HEADED ENGINE: Try multiple Gemini variants, then Fallback to OpenAI ---
+        # --- RESTORING ORIGINAL HIGH-PERFORMANCE ENGINE ---
         endpoints = [
-            ("v1beta", "gemini-1.5-flash-8b"),
-            ("v1", "gemini-1.5-flash"),
             ("v1beta", "gemini-1.5-flash-latest"),
-            ("v1", "gemini-1.5-flash-001"),
-            ("v1", "gemini-pro")
+            ("v1", "gemini-1.5-flash"),
+            ("v1beta", "gemini-1.5-pro-latest"),
+            ("v1", "gemini-pro"),
+            ("v1beta", "gemini-1.5-flash-8b")
         ]
         
         headers = { 

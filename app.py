@@ -1100,6 +1100,12 @@ def delete_patient(patient_id):
 def imaging_file(filename):
     if 'user_id' not in session:
         return redirect(url_for('login'))
+    
+    file_path = os.path.join(app.config['IMAGING_FOLDER'], filename)
+    if not os.path.exists(file_path):
+        print(f">>> [DICOM ALERT] File missing from disk: {filename}. It may have been deleted by a server redeploy.", flush=True)
+        return "File not found on server. It may have been deleted by a redeploy.", 404
+        
     return send_from_directory(app.config['IMAGING_FOLDER'], filename)
 
 @app.route('/api/patient_images/<int:patient_id>')

@@ -710,8 +710,14 @@
         };
 
         window.submitCaseCompletion = function() {
+            console.log(">>> [DEBUG] submitCaseCompletion triggered.");
             const form = document.getElementById('completeCaseForm');
+            if (!form) {
+                console.error(">>> [ERROR] completeCaseForm not found!");
+                return;
+            }
             if (!form.checkValidity()) {
+                console.warn(">>> [WARN] Form invalid. Checking fields...");
                 form.reportValidity();
                 return;
             }
@@ -721,27 +727,35 @@
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
 
             const formData = new FormData(form);
+            console.log(">>> [DEBUG] Fetching /complete_case/" + patientId);
+            
             fetch(`/complete_case/${patientId}`, {
                 method: 'POST',
                 body: formData
             })
-            .then(res => res.json())
+            .then(res => {
+                console.log(">>> [DEBUG] Response received. Status:", res.status);
+                return res.json();
+            })
             .then(data => {
                 if (data.success) {
+                    console.log(">>> [SUCCESS] Case completed successfully.");
                     const modalEl = document.getElementById('completeCaseModal');
                     const modal = bootstrap.Modal.getInstance(modalEl);
-                    modal.hide();
+                    if (modal) modal.hide();
                     window.location.reload();
                 } else {
+                    console.error(">>> [ERROR] Backend returned failure:", data.message);
                     btn.disabled = false;
                     btn.innerHTML = 'Generate Report & Complete';
                     alert('Error: ' + data.message);
                 }
             })
             .catch(err => {
+                console.error(">>> [EXCEPTION] Network error in submitCaseCompletion:", err);
                 btn.disabled = false;
                 btn.innerHTML = 'Generate Report & Complete';
-                alert('Network error occurred.');
+                alert('Network error occurred: ' + err.message);
             });
         };
 

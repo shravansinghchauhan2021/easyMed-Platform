@@ -1626,20 +1626,32 @@ def generate_report(patient_id):
 
 @app.route('/api/generate_summary/<int:patient_id>', methods=['GET'])
 def api_generate_summary(patient_id):
-    if 'user_id' not in session: return jsonify({'success': False}), 401
+    if 'user_id' not in session: return jsonify({'summary': "Unauthenticated"}), 401
     from backend.chatbot_logic import fetch_conversation_history, query_openai, is_ai_configured
     import json
-    messages = fetch_conversation_history(patient_id)
-    if not messages: return jsonify({'summary': "No conversation history available for this case."})
     
-    if is_ai_configured():
-        # Only take last 15 messages to stay within token limits for demo
-        prompt = f"Summarize this medical consultation in a structured way (Condition, Symptoms, Observations, Conclusion): {json.dumps(messages[-15:])}"
-        summary = query_openai(prompt, "You are a medical assistant producing clinical summaries for reports.")
-    else:
-        summary = f"Summary of {len(messages)} messages recorded in the system. AI enhancement required for structured breakdown."
-    
-    return jsonify({'summary': summary})
+    try:
+        messages = fetch_conversation_history(patient_id)
+        if not messages: 
+            return jsonify({'summary': "No conversation history available for this case. Try chatting with the patient first."})
+        
+        if is_ai_configured():
+            # Filter and simplify messages to ensure high-quality summary within model window
+            clean_msgs = [{"role": m.get('role', 'user'), "content": m.get('message', '')} for m in messages[-15:]]
+            prompt = f"Summarize this medical case professionally (Condition, Symptoms, Actions): {json.dumps(clean_msgs)}"
+            
+            summary = query_openai(prompt, "You are a clinical registrar producing medical case summaries.")
+            
+            # Catch internal API errors
+            if "Error" in summary:
+                return jsonify({'summary': f"AI summarization is currently busy. Raw observation: {summary[:50]}..."})
+        else:
+            summary = f"Summary unavailable: AI configuration required. Total messages: {len(messages)}."
+        
+        return jsonify({'summary': summary})
+    except Exception as e:
+        print(f"Summary Error: {str(e)}")
+        return jsonify({'summary': "The AI assistant is temporarily unavailable for this summary. Please try again in a few moments."})
 
 @app.route('/api/analyze_scan/<int:patient_id>', methods=['POST'])
 def api_analyze_scan(patient_id):

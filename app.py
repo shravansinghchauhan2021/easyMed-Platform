@@ -1591,24 +1591,23 @@ def complete_case(patient_id):
         conn.close()
         return jsonify({'success': False, 'message': 'Case not found or not assigned to you'}), 404
         
-        conn = get_db_connection()
-        db_execute(conn, 'UPDATE patients SET status = ?, final_diagnosis = ?, final_recommendations = ? WHERE id = ?', 
-                     ('Completed', final_diagnosis, recommendations, patient_id))
-        
-        # Generate Report
-        report_filename = f"report_{patient_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
-        generate_pdf_report(patient_id, report_filename, final_diagnosis, recommendations)
-        
-        # Sync both fields for compatibility
-        db_execute(conn, 'UPDATE patients SET report_file_path = ?, report_file = ? WHERE id = ?', 
-                     (report_filename, report_filename, patient_id))
+    # --- Case found, proceed with completion ---
+    db_execute(conn, 'UPDATE patients SET status = ?, final_diagnosis = ?, final_recommendations = ? WHERE id = ?', 
+                 ('Completed', final_diagnosis, recommendations, patient_id))
+    
+    # Generate Report
+    report_filename = f"report_{patient_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
+    generate_pdf_report(patient_id, report_filename, final_diagnosis, recommendations)
+    
+    # Sync both fields for compatibility
+    db_execute(conn, 'UPDATE patients SET report_file_path = ?, report_file = ? WHERE id = ?', 
+                 (report_filename, report_filename, patient_id))
     
     create_notification(patient['rural_doctor_id'], f"Case Completed & Report Generated: {patient['patient_name']}", url_for('rural_dashboard'), patient_id=patient_id, conn=conn)
     if patient['patient_user_id']:
         create_notification(patient['patient_user_id'], f"Consultation Completed. Your final report is ready.", url_for('patient_case_view', patient_id=patient_id), patient_id=patient_id, conn=conn)
     
     conn.commit()
-
     conn.close()
     
     socketio.emit('status_update', {'patient_id': patient_id, 'status': 'Completed'}, room=f"patient_{patient_id}")

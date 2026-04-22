@@ -4,6 +4,7 @@ eventlet.monkey_patch()
 # Standard imports
 import os
 import sqlite3
+from werkzeug.utils import secure_filename
 import traceback
 import psycopg2
 from psycopg2 import extras

@@ -172,7 +172,7 @@ def query_openai(prompt, system_context, user_id=None):
     api_key = keys.get('GEMINI_API_KEY', '')
     
     if api_key.startswith('AIza'):
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
         headers = { "Content-Type": "application/json" }
         full_text = f"System Context: {system_context}\n\nUser Question: {prompt}"
         
@@ -372,6 +372,9 @@ def process_chatbot_query(user_query, current_user_id, patient_id=None):
         return f"{specialist_suggestion}\n\nWould you like me to help you draft a case for this specialist?"
 
     if is_ai_configured():
-        return query_openai(user_query, system_context, user_id=current_user_id)
+        # Perform deep internet search for general medical queries to boost intelligence
+        search_context = perform_web_search(user_query)
+        enhanced_context = f"{system_context}\n\nLATEST INTERNET RESEARCH:\n{search_context}"
+        return query_openai(user_query, enhanced_context, user_id=current_user_id)
 
     return "I can help with patient data in easyMed. Try 'Show details for [Name]' or 'Check pending cases'."

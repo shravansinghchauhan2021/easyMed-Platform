@@ -30,6 +30,20 @@ if DATABASE_URL:
     elif DATABASE_URL.startswith('postgres://'):
         DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
 
+# Load configuration safely
+try:
+    with open('config.json') as f:
+        config = json.load(f)
+except:
+    config = {}
+
+# --- Step 1.5: API Priority Configuration ---
+# Prioritize Environment Variables for Production Security
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', config.get('GEMINI_API_KEY', ''))
+# Backward compatibility for old variable names if used
+if not GEMINI_API_KEY:
+    GEMINI_API_KEY = os.getenv('OPENAI_API_KEY', config.get('OPENAI_API_KEY', config.get('GOOGLE_API_KEY', '')))
+
 # --- Step 2: Database Helpers ---
 def get_db_connection():
     if DATABASE_URL:
@@ -857,13 +871,15 @@ def add_patient():
 
     patient_name = request.form['patient_name']
     patient_mobile = request.form.get('patient_mobile', '')
-    age = request.form['age']
+    age_raw = request.form.get('age', '')
+    age = int(age_raw) if age_raw.strip().isdigit() else None
+    
     gender = request.form.get('gender', 'Other')
     specialist_type = request.form.get('specialist_type', 'Neurologist')
     blood_pressure = request.form.get('blood_pressure', '')
     heart_rate = request.form.get('heart_rate', '')
     oxygen_level = request.form.get('oxygen_level', '')
-    problem_description = request.form['problem_description']
+    problem_description = request.form.get('problem_description', '')
     priority = request.form.get('priority', 'Normal')
     
     # AI Assistance: Auto-Priority and Suggestion

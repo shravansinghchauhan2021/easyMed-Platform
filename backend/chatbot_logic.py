@@ -10,9 +10,18 @@ from datetime import datetime
 DATABASE = 'database.db'
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
-# Mock OpenAI and Search API keys - these should be set in environment variables
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "your_openai_key_here")
-SERPAPI_KEY = os.getenv("SERPAPI_KEY", "your_serpapi_key_here")
+# Load config from file if present
+config = {}
+try:
+    with open('config.json') as f:
+        config = json.load(f)
+except:
+    pass
+
+# Prioritize Environment Variables for Production Security
+# These should be set in Render's "Environment Variables" dashboard
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", config.get("GEMINI_API_KEY", os.getenv("OPENAI_API_KEY", config.get("OPENAI_API_KEY", ""))))
+SERPAPI_KEY = os.getenv("SERPAPI_KEY", config.get("SERPAPI_KEY", "your_serpapi_key_here"))
 
 def get_db_connection():
     if DATABASE_URL:

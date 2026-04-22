@@ -252,7 +252,7 @@ def query_openai(prompt, system_context, user_id=None):
             except:
                 pass
         
-        return f"Gemini Error (Tried all endpoints): {last_error}"
+        return f"Gemini connection failed for your current key. Please ensure your project has the 'Generative Language API' enabled here: https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com \n\nSpecific Error: {last_error}"
     
     # Fallback to OpenAI API for sk-... keys
     else:
@@ -365,7 +365,8 @@ def process_chatbot_query(user_query, current_user_id, patient_id=None):
                     return f"I found **{mentioned_patient}**, but no conversation history exists."
                 
                 if is_ai_configured():
-                    context = f"Patient: {mentioned_patient}\nStatus: {patient_data['status']}\nFinal Diagnosis: {patient_data.get('final_diagnosis')}\nFinal Recommendations: {patient_data.get('final_recommendations')}\n\nTranscript: {json.dumps(messages)}"
+                    # Handle datetime serialization for history
+                    context = f"Patient: {mentioned_patient}\nStatus: {patient_data['status']}\nFinal Diagnosis: {patient_data.get('final_diagnosis')}\nFinal Recommendations: {patient_data.get('final_recommendations')}\n\nTranscript: {json.dumps(messages, default=str)}"
                     return query_openai(f"Based on this patient data and transcript, answer: {user_query}", context, user_id=current_user_id)
                 return f"History for **{mentioned_patient}** found with {len(messages)} messages."
 

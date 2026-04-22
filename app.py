@@ -1605,9 +1605,13 @@ def complete_case(patient_id):
         report_filename = f"report_{patient_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
         generate_pdf_report(patient_id, report_filename, final_diagnosis, recommendations)
         
-        # Sync both fields for compatibility
-        db_execute(conn, 'UPDATE patients SET report_file_path = ?, report_file = ? WHERE id = ?', 
-                     (report_filename, report_filename, patient_id))
+        # --- Nuclear Resilience: Sync both fields for compatibility ---
+        try:
+            db_execute(conn, 'UPDATE patients SET report_file_path = ?, report_file = ? WHERE id = ?', 
+                         (report_filename, report_filename, patient_id))
+        except:
+            # Fallback if specific column is still missing
+            db_execute(conn, 'UPDATE patients SET report_file = ? WHERE id = ?', (report_filename, patient_id))
         
         create_notification(patient['rural_doctor_id'], f"Case Completed & Report Generated: {patient['patient_name']}", url_for('rural_dashboard'), patient_id=patient_id, conn=conn)
         if patient['patient_user_id']:

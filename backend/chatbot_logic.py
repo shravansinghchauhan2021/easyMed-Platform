@@ -224,13 +224,15 @@ def query_openai(prompt, system_context, user_id=None):
                     last_error = res_json['error'].get('message', 'Unknown API error')
                 else:
                     last_error = f"HTTP {response.status_code}"
+                print(f"    [AI FAIL] {version}/{model} -> {last_error}", flush=True)
             except Exception as e:
                 last_error = str(e)
+                print(f"    [AI EXCEPTION] {version}/{model} -> {last_error}", flush=True)
                 continue
         
         # --- FAIL-SAFE: Switch to OpenAI Backup Brain ---
         if openai_key and openai_key.startswith('sk-'):
-            print(">>> [FAIL-SAFE] Gemini failed. Switching to OpenAI Backup...", flush=True)
+            print(">>> [FAIL-SAFE] All Gemini attempts failed. Switching to OpenAI Backup...", flush=True)
             openai_url = "https://api.openai.com/v1/chat/completions"
             oa_headers = {
                 "Authorization": f"Bearer {openai_key}",

@@ -1609,8 +1609,10 @@ def complete_case(patient_id):
         try:
             db_execute(conn, 'UPDATE patients SET report_file_path = ?, report_file = ? WHERE id = ?', 
                          (report_filename, report_filename, patient_id))
-        except:
-            # Fallback if specific column is still missing
+        except Exception as e:
+            # ROLLBACK IS MANDATORY IN POSTGRES BEFORE FALLBACK
+            conn.rollback() 
+            print(f">>> [FALLBACK] Column sync failed: {e}. Switching to legacy column.", flush=True)
             db_execute(conn, 'UPDATE patients SET report_file = ? WHERE id = ?', (report_filename, patient_id))
         
         create_notification(patient['rural_doctor_id'], f"Case Completed & Report Generated: {patient['patient_name']}", url_for('rural_dashboard'), patient_id=patient_id, conn=conn)

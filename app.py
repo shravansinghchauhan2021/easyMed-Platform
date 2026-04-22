@@ -1527,10 +1527,15 @@ def accept_case(patient_id):
     return jsonify({'success': True, 'message': 'Case accepted successfully'})
 
 def generate_pdf_report(patient_id, filename, diagnosis, recommendations):
-    conn = get_db_connection()
-    patient = db_execute(conn, 'SELECT * FROM patients WHERE id = ?', (patient_id,)).fetchone()
-    messages = db_execute(conn, 'SELECT m.message, m.timestamp, u.username FROM messages m JOIN users u ON m.sender_id = u.id WHERE m.patient_id = ? ORDER BY m.timestamp ASC', (patient_id,)).fetchall()
-    conn.close()
+    print(f">>> [PDF-GEN] Starting PDF generation for patient {patient_id} into {filename}", flush=True)
+    try:
+        conn = get_db_connection()
+        patient = db_execute(conn, 'SELECT * FROM patients WHERE id = ?', (patient_id,)).fetchone()
+        messages = db_execute(conn, 'SELECT m.message, m.timestamp, u.username FROM messages m JOIN users u ON m.sender_id = u.id WHERE m.patient_id = ? ORDER BY m.timestamp ASC', (patient_id,)).fetchall()
+        conn.close()
+    except Exception as e:
+        print(f">>> [PDF-ERROR] Initial DB fetch failed: {e}", flush=True)
+        return None
 
     if not patient:
         return None
@@ -1584,7 +1589,14 @@ def generate_pdf_report(patient_id, filename, diagnosis, recommendations):
         elements.append(Paragraph(f"<b>[{m['timestamp']}] {m['username']}</b>: {m['message']}", styles['BodyText']))
         elements.append(Spacer(1, 6))
 
-    doc.build(elements)
+    print(f">>> [PDF-GEN] Building document with {len(elements)} elements...", flush=True)
+    try:
+        doc.build(elements)
+        print(f">>> [PDF-SUCCESS] Report {filename} created successfully.", flush=True)
+    except Exception as e:
+        print(f">>> [PDF-ERROR] doc.build failed: {e}", flush=True)
+        traceback.print_exc()
+        return None
     return filename
 
 @app.route('/complete_case/<int:patient_id>', methods=['POST'])
@@ -1592,6 +1604,7 @@ def complete_case(patient_id):
     if 'user_id' not in session or session.get('profession') not in SPECIALIST_ROLES:
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     
+    conn = None
     try:
         final_diagnosis = request.form.get('final_diagnosis', 'Consultation concluded.')
         recommendations = request.form.get('recommendations', 'Follow-up as needed.')
@@ -1603,34 +1616,63 @@ def complete_case(patient_id):
             conn.close()
             return jsonify({'success': False, 'message': 'Case not found or not assigned to you'}), 404
             
-        # --- Case found, proceed with completion ---
-        db_execute(conn, 'UPDATE patients SET status = ?, final_diagnosis = ?, final_recommendations = ? WHERE id = ?', 
-                     ('Completed', final_diagnosis, recommendations, patient_id))
+        print(f">>> [TRANS-START] Finalizing case {patient_id}...", flush=True)
         
-        # Generate Report
+        # --- Step 1: Main Status Update ---
+        try:
+            db_execute(conn, 'UPDATE patients SET status = ?, final_diagnosis = ?, final_recommendations = ? WHERE id = ?', 
+                         ('Completed', final_diagnosis, recommendations, patient_id))
+            conn.commit() # Intermediary commit to ensure we save progress
+            print(">>> [TRANS-STEP] Main case status updated to Completed.", flush=True)
+        except Exception as e:
+            if conn: conn.rollback()
+            print(f">>> [TRANS-FAIL] Main update failed: {e}. Attempting fallback...", flush=True)
+            try:
+                db_execute(conn, 'UPDATE patients SET status = ? WHERE id = ?', ('Completed', patient_id))
+                conn.commit()
+            except: 
+                if conn: conn.rollback()
+                return jsonify({'success': False, 'message': f'Database Critical Failure: {e}'}), 500
+        
+        # --- Step 2: Generate Report ---
         report_filename = f"report_{patient_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
-        generate_pdf_report(patient_id, report_filename, final_diagnosis, recommendations)
+        pdf_status = generate_pdf_report(patient_id, report_filename, final_diagnosis, recommendations)
+        if not pdf_status:
+            print(">>> [TRANS-WARN] PDF Generation failed, but case is marked completed.", flush=True)
         
-        # --- Nuclear Resilience: Sync both fields for compatibility ---
+        # --- Step 3: Sync Report Filename ---
         try:
             db_execute(conn, 'UPDATE patients SET report_file_path = ?, report_file = ? WHERE id = ?', 
                          (report_filename, report_filename, patient_id))
+            conn.commit()
         except Exception as e:
-            # ROLLBACK IS MANDATORY IN POSTGRES BEFORE FALLBACK
-            conn.rollback() 
-            print(f">>> [FALLBACK] Column sync failed: {e}. Switching to legacy column.", flush=True)
-            db_execute(conn, 'UPDATE patients SET report_file = ? WHERE id = ?', (report_filename, patient_id))
+            if conn: conn.rollback()
+            print(f">>> [TRANS-FAIL] Report sync failed: {e}. Trying legacy column.", flush=True)
+            try:
+                db_execute(conn, 'UPDATE patients SET report_file = ? WHERE id = ?', (report_filename, patient_id))
+                conn.commit()
+            except:
+                if conn: conn.rollback()
         
-        create_notification(patient['rural_doctor_id'], f"Case Completed & Report Generated: {patient['patient_name']}", url_for('rural_dashboard'), patient_id=patient_id, conn=conn)
-        if patient['patient_user_id']:
-            create_notification(patient['patient_user_id'], f"Consultation Completed. Your final report is ready.", url_for('patient_case_view', patient_id=patient_id), patient_id=patient_id, conn=conn)
+        # --- Step 4: Notifications ---
+        try:
+            create_notification(patient['rural_doctor_id'], f"Case Completed & Report Generated: {patient['patient_name']}", url_for('rural_dashboard'), patient_id=patient_id, conn=conn)
+            if patient['patient_user_id']:
+                create_notification(patient['patient_user_id'], f"Consultation Completed. Your final report is ready.", url_for('patient_case_view', patient_id=patient_id), patient_id=patient_id, conn=conn)
+            conn.commit()
+        except:
+            if conn: conn.rollback()
         
-        conn.commit()
-        conn.close()
+        if conn: conn.close()
         
         socketio.emit('status_update', {'patient_id': patient_id, 'status': 'Completed'}, room=f"patient_{patient_id}")
         return jsonify({'success': True, 'message': 'Case completed and report generated'})
+        
     except Exception as e:
+        if conn:
+            try: conn.rollback()
+            except: pass
+            conn.close()
         traceback.print_exc()
         return jsonify({'success': False, 'message': f"Internal Production Error: {str(e)}"}), 500
 

@@ -488,6 +488,14 @@
     <!-- Shared Diagnostic Viewer Component -->
     {% include 'diagnostic_viewer.html' %}
     <script>
+        // --- GLOBAL ERROR SHIELD: Prevents silent failures ---
+        window.onerror = function(message, source, lineno, colno, error) {
+            const errorMsg = `>>> [CRITICAL SCRIPT ERROR] \nMessage: ${message} \nSource: ${source} \nLine: ${lineno} \nCol: ${colno}`;
+            console.error(errorMsg, error);
+            alert("easyMed Platform Error Detected:\n" + message + "\nLine: " + lineno);
+            return false;
+        };
+
         // Auto-scroll chat to the bottom
         function scrollToBottom() {
             var chatDiv = document.getElementById("chat-messages");
@@ -709,55 +717,67 @@
                 });
         };
 
-        window.submitCaseCompletion = function() {
-            console.log(">>> [DEBUG] submitCaseCompletion triggered.");
-            const form = document.getElementById('completeCaseForm');
-            if (!form) {
-                console.error(">>> [ERROR] completeCaseForm not found!");
-                return;
-            }
-            if (!form.checkValidity()) {
-                console.warn(">>> [WARN] Form invalid. Checking fields...");
-                form.reportValidity();
-                return;
-            }
-
-            const btn = document.getElementById('finalSubmitBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
-
-            const formData = new FormData(form);
-            console.log(">>> [DEBUG] Fetching /complete_case/" + patientId);
+        (function() {
+            console.log(">>> [INIT] register submitCaseCompletion on window object.");
             
-            fetch(`/complete_case/${patientId}`, {
-                method: 'POST',
-                body: formData
-            })
-            .then(res => {
-                console.log(">>> [DEBUG] Response received. Status:", res.status);
-                return res.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    console.log(">>> [SUCCESS] Case completed successfully.");
-                    const modalEl = document.getElementById('completeCaseModal');
-                    const modal = bootstrap.Modal.getInstance(modalEl);
-                    if (modal) modal.hide();
-                    window.location.reload();
-                } else {
-                    console.error(">>> [ERROR] Backend returned failure:", data.message);
-                    btn.disabled = false;
-                    btn.innerHTML = 'Generate Report & Complete';
-                    alert('Error: ' + data.message);
+            window.submitCaseCompletion = function() {
+                console.log(">>> [DEBUG] submitCaseCompletion triggered.");
+                
+                const form = document.getElementById('completeCaseForm');
+                if (!form) {
+                    console.error(">>> [ERROR] completeCaseForm element NOT FOUND in document!");
+                    alert("System Error: Modal form not found. Please reload the page.");
+                    return;
                 }
-            })
-            .catch(err => {
-                console.error(">>> [EXCEPTION] Network error in submitCaseCompletion:", err);
-                btn.disabled = false;
-                btn.innerHTML = 'Generate Report & Complete';
-                alert('Network error occurred: ' + err.message);
-            });
-        };
+
+                if (!form.checkValidity()) {
+                    console.warn(">>> [WARN] Form validation failed. Fields may be empty.");
+                    form.reportValidity();
+                    return;
+                }
+
+                const btn = document.getElementById('finalSubmitBtn');
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating Report...';
+                }
+
+                const formData = new FormData(form);
+                console.log(">>> [DEBUG] Dispatching POST /complete_case/" + patientId);
+                console.table(Object.fromEntries(formData));
+
+                fetch(`/complete_case/${patientId}`, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => {
+                    console.log(">>> [DEBUG] Fetch Response Status:", res.status);
+                    if (!res.ok) throw new Error("HTTP " + res.status);
+                    return res.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        console.log(">>> [SUCCESS] Case completed successfully.");
+                        window.location.reload();
+                    } else {
+                        console.error(">>> [ERROR] Server-side business logic failure:", data.message);
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.innerHTML = 'Generate Report & Complete';
+                        }
+                        alert('Consultation Completion Overruled: ' + data.message);
+                    }
+                })
+                .catch(err => {
+                    console.error(">>> [EXCEPTION] Network or Parsing failure:", err);
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = 'Generate Report & Complete';
+                    }
+                    alert('Network Communication Stalled: ' + err.message);
+                });
+            };
+        })();
 
         // Listen for status updates
         socket.on('status_update', function(data) {

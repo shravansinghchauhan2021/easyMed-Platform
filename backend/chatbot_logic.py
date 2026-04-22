@@ -171,17 +171,22 @@ def query_openai(prompt, system_context, user_id=None):
 
     keys = load_config()
     api_key = keys.get('GEMINI_API_KEY', '')
+    openai_key = os.getenv('OPENAI_API_KEY', '') # Load backup brain key
     
     if api_key.startswith('AIza'):
-        # --- AUTO-ADAPTIVE ENGINE: Try multiple versions/models until success ---
+        # --- DUAL-HEADED ENGINE: Try multiple Gemini variants, then Fallback to OpenAI ---
         endpoints = [
-            ("v1", "gemini-1.5-flash"),
             ("v1beta", "gemini-1.5-flash-latest"),
-            ("v1", "gemini-pro"),
-            ("v1beta", "gemini-pro")
+            ("v1", "gemini-1.5-flash"),
+            ("v1beta", "gemini-1.5-pro-latest"),
+            ("v1", "gemini-pro")
         ]
         
-        headers = { "Content-Type": "application/json" }
+        headers = { 
+            "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebkit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+        }
+        
         full_text = f"System Context: {system_context}\n\nUser Question: {prompt}"
         
         contents = []
@@ -199,7 +204,7 @@ def query_openai(prompt, system_context, user_id=None):
         for version, model in endpoints:
             url = f"https://generativelanguage.googleapis.com/{version}/models/{model}:generateContent?key={api_key}"
             try:
-                print(f">>> [AI ADAPT] Trying {version}/{model}...", flush=True)
+                print(f">>> [AI ADAPT] Trying Gemini {version}/{model}...", flush=True)
                 response = requests.post(url, headers=headers, json=data, timeout=12)
                 res_json = response.json()
                 
@@ -218,10 +223,33 @@ def query_openai(prompt, system_context, user_id=None):
                     last_error = res_json['error'].get('message', 'Unknown API error')
                 else:
                     last_error = f"HTTP {response.status_code}"
-                print(f"    [FAIL] {last_error}", flush=True)
             except Exception as e:
                 last_error = str(e)
                 continue
+        
+        # --- FAIL-SAFE: Switch to OpenAI Backup Brain ---
+        if openai_key and openai_key.startswith('sk-'):
+            print(">>> [FAIL-SAFE] Gemini failed. Switching to OpenAI Backup...", flush=True)
+            openai_url = "https://api.openai.com/v1/chat/completions"
+            oa_headers = {
+                "Authorization": f"Bearer {openai_key}",
+                "Content-Type": "application/json"
+            }
+            oa_data = {
+                "model": "gpt-4o-mini", # High performance backup
+                "messages": [
+                    {"role": "system", "content": system_context},
+                    {"role": "user", "content": prompt}
+                ],
+                "max_tokens": 1000
+            }
+            try:
+                oa_res = requests.post(openai_url, headers=oa_headers, json=oa_data, timeout=15)
+                oa_json = oa_res.json()
+                if 'choices' in oa_json:
+                    return oa_json['choices'][0]['message']['content']
+            except:
+                pass
         
         return f"Gemini Error (Tried all endpoints): {last_error}"
     

@@ -177,8 +177,8 @@ def query_openai(prompt, system_context, user_id=None):
         # --- DUAL-HEADED ENGINE: Try multiple Gemini variants, then Fallback to OpenAI ---
         endpoints = [
             ("v1beta", "gemini-1.5-flash-8b"),
-            ("v1beta", "gemini-1.5-flash-latest"),
             ("v1", "gemini-1.5-flash"),
+            ("v1beta", "gemini-1.5-flash-latest"),
             ("v1", "gemini-1.5-flash-001"),
             ("v1", "gemini-pro")
         ]

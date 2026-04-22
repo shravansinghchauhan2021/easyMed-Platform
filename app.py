@@ -219,6 +219,8 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 
 app = Flask(__name__)
+safe_init_db()  # ACTIVATE SELF-HEALING DATABASE ON STARTUP
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev_key_123')
 app.before_request(safe_init_db)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 app.secret_key = 'super_secret_medical_key_for_dev'

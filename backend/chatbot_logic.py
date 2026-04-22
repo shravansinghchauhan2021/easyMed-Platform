@@ -169,6 +169,7 @@ def query_openai(prompt, system_context, user_id=None):
             "To enable my full multi-specialty intelligence, please add your OpenAI API key to `config.json`."
         )
 
+    keys = load_config()
     api_key = keys.get('GEMINI_API_KEY', '')
     
     if api_key.startswith('AIza'):

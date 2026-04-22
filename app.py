@@ -174,6 +174,7 @@ def init_db():
         ('patients', 'rash_description', 'TEXT'), ('patients', 'breathing_condition', 'TEXT'),
         ('patients', 'priority_level', 'TEXT'), ('patients', 'final_diagnosis', 'TEXT'),
         ('patients', 'final_recommendations', 'TEXT'), ('patients', 'assigned_doctor_id', 'INTEGER'),
+        ('patients', 'report_file_path', 'TEXT'),
         ('patients', 'created_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
     ]
     

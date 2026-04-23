@@ -1,4 +1,4 @@
-package com.medconnectai.app;
+package com.shravan.easymedchoice;
 
 import android.content.Intent;
 import android.os.Bundle;

@@ -1,4 +1,4 @@
-package com.medconnectai.app;
+package com.shravan.easymedchoice;
 
 import android.annotation.SuppressLint;
 import android.content.Intent;

@@ -247,7 +247,21 @@
                             <h6 class="m-0 fw-bold">Recent Notifications</h6>
                         </div>
                         <div class="panel-body">
-                            <div class="text-center py-4 text-muted small">Return to dashboard to view notifications</div>
+                            {% if notifications %}
+                                {% for notif in notifications %}
+                                <a href="{{ url_for('handle_notification', notif_id=notif['id']) }}" class="notif-item {{ 'unread' if not notif['read_status'] else '' }}">
+                                    <div class="notif-icon">
+                                        <i class="fa-solid fa-circle-info"></i>
+                                    </div>
+                                    <div class="notif-content">
+                                        <p class="m-0 text-dark small">{{ notif['message'] }}</p>
+                                        <span class="text-muted" style="font-size: 0.7rem;">{{ notif['timestamp'] }}</span>
+                                    </div>
+                                </a>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-center py-4 text-muted small">No recent notifications</div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>

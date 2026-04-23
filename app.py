@@ -231,6 +231,19 @@ app.secret_key = 'super_secret_medical_key_for_dev'
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
+@app.context_processor
+def inject_global_notifications():
+    if 'user_id' in session:
+        try:
+            conn = get_db_connection()
+            notifications = db_execute(conn, 'SELECT * FROM notifications WHERE user_id = ? ORDER BY id DESC LIMIT 10', (session['user_id'],)).fetchall()
+            unread_count = sum(1 for n in notifications if not n['read_status'])
+            conn.close()
+            return dict(notifications=notifications, unread_count=unread_count)
+        except:
+            pass
+    return dict(notifications=[], unread_count=0)
+
 
 UPLOAD_FOLDER = 'uploads'
 IMAGING_FOLDER = os.path.join(UPLOAD_FOLDER, 'imaging')

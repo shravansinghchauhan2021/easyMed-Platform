@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - easyMed</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard_enhancements.css') }}">
+    <style>
+        :root {
+            --danger-glow: rgba(239, 68, 68, 0.1);
+        }
+        .profile-card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid rgba(0,0,0,0.05);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        }
+        .profile-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            padding: 40px;
+            color: white;
+            text-align: center;
+        }
+        .profile-avatar {
+            width: 100px;
+            height: 100px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            color: var(--primary-color);
+            font-size: 2.5rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .danger-zone {
+            margin-top: 30px;
+            padding: 25px;
+            border-radius: 15px;
+            background: var(--danger-glow);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+        .btn-delete {
+            background-color: #ef4444;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .btn-delete:hover {
+            background-color: #dc2626;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(239, 68, 68, 0.3);
+            color: white;
+        }
+        .back-link {
+            color: var(--primary-color);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        .back-link:hover {
+            color: var(--secondary-color);
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="hospital-pattern"></div>
+    
+    <div class="container py-5">
+        <a href="javascript:history.back()" class="back-link">
+            <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+        </a>
+        
+        <div class="row justify-content-center">
+            <div class="col-lg-6">
+                <div class="profile-card">
+                    <div class="profile-header">
+                        <div class="profile-avatar">
+                            <i class="fa-solid fa-user-circle"></i>
+                        </div>
+                        <h2 class="m-0">{{ user['username'] }}</h2>
+                        <p class="mb-0 opacity-75">{{ user['profession'] }}</p>
+                    </div>
+                    
+                    <div class="card-body p-4 p-md-5">
+                        <h5 class="fw-bold mb-4">Account Information</h5>
+                        <div class="mb-4">
+                            <label class="text-muted small fw-bold text-uppercase">Mobile Number</label>
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="fa-solid fa-phone text-primary"></i>
+                                <span class="fw-medium">{{ user['mobile_number'] }}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="text-muted small fw-bold text-uppercase">Account Status</label>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="status-dot status-online"></span>
+                                <span class="fw-medium">{{ user['status'] }}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="danger-zone">
+                            <h6 class="text-danger fw-bold"><i class="fa-solid fa-triangle-exclamation me-2"></i>Danger Zone</h6>
+                            <p class="small text-muted mb-4">Deleting your account will permanently remove all your medical data, messages, and files. This action cannot be undone.</p>
+                            <button class="btn btn-delete w-100" onclick="confirmDelete()">
+                                <i class="fa-solid fa-trash-can me-2"></i> Delete My Account
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Modal -->
+    <div class="modal fade" id="deleteConfirmModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title fw-bold">Permanent Deletion</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <div class="mb-3 text-danger" style="font-size: 3rem;">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                    </div>
+                    <h4 class="fw-bold">Are you absolutely sure?</h4>
+                    <p class="text-muted">This will delete EVERYTHING associated with your account. You will be logged out and cannot recover this data.</p>
+                </div>
+                <div class="modal-footer border-0 p-3">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger rounded-pill px-4" id="finalDeleteBtn" onclick="executeDelete()">Yes, Delete Forever</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let deleteModal;
+        document.addEventListener('DOMContentLoaded', () => {
+            deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+        });
+
+        function confirmDelete() {
+            deleteModal.show();
+        }
+
+        async function executeDelete() {
+            const btn = document.getElementById('finalDeleteBtn');
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Deleting...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/api/delete_account', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.location.href = data.redirect || '/login';
+                } else {
+                    alert('Error: ' + data.message);
+                    btn.innerHTML = 'Yes, Delete Forever';
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                console.error(err);
+                alert('An error occurred. Please try again.');
+                btn.innerHTML = 'Yes, Delete Forever';
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

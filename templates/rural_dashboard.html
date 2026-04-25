@@ -136,7 +136,7 @@
                 <button class="theme-toggle-btn ms-3" id="themeToggle" title="Toggle Dark/Light Mode">
                     <i class="fa-solid fa-moon"></i>
                 </button>
-                <div class="notification-bell text-white" id="notifDropdownToggle">
+                <div class="notification-bell text-white ms-3" id="notifDropdownToggle" style="cursor: pointer; position: relative;">
                     <i class="fa-solid fa-bell"></i>
                     <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle {{ 'd-none' if unread_count == 0 }}" id="notifBadge"></span>
                     
@@ -474,8 +474,6 @@
                 </div>
             </div>
 
-        </div>
-    </div>
 
     <!-- Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -673,67 +671,115 @@
         });
     </script>
             
-            </div> <!-- End content-area -->
+        </section>
+    </div> <!-- End main-dashboard-content -->
+</div> <!-- End main-wrapper -->
 
-            <!-- Bottom Wellness Section -->
-            <section class="wellness-section">
-                <h2 class="wellness-title">Healthy Living Tips</h2>
-                <div class="wellness-grid">
-                    <div class="wellness-card">
-                        <img src="{{ url_for('static', filename='images/exercise.png') }}" alt="Exercise">
-                        <div class="wellness-card-content">
-                            <p class="wellness-card-text">Physical Activity for Longevity</p>
-                            <ul class="wellness-details-list text-start">
-                                <li><i class="fa-solid fa-check"></i> Aim for 150 minutes of moderate aerobic activity weekly.</li>
-                                <li><i class="fa-solid fa-check"></i> Daily walking reduces current risk of stroke and heart disease.</li>
-                                <li><i class="fa-solid fa-check"></i> Incorporate strength training twice a week for muscle health.</li>
-                                <li><i class="fa-solid fa-check"></i> Activity improves mental clarity and reduces clinical brain fog.</li>
-                            </ul>
-                        </div>
-                    </div>
-                    <div class="wellness-card">
-                        <img src="{{ url_for('static', filename='images/healthy_food.png') }}" alt="Healthy Food">
-                        <div class="wellness-card-content">
-                            <p class="wellness-card-text">Nutritional Balance & Vitality</p>
-                            <ul class="wellness-details-list text-start">
-                                <li><i class="fa-solid fa-pepper-hot"></i> Prioritize whole grains, lean proteins, and leafy greens.</li>
-                                <li><i class="fa-solid fa-pepper-hot"></i> Minimize processed sugars to maintain steady energy levels.</li>
-                                <li><i class="fa-solid fa-pepper-hot"></i> Hydrate with at least 8-10 glasses of clean water daily.</li>
-                                <li><i class="fa-solid fa-pepper-hot"></i> Antioxidant-rich foods support rapid cellular repair.</li>
-                            </ul>
-                        </div>
-                    </div>
-                    <div class="wellness-card">
-                        <img src="{{ url_for('static', filename='images/meditation.png') }}" alt="Meditation">
-                        <div class="wellness-card-content">
-                            <p class="wellness-card-text">Mindfulness & Mental Peace</p>
-                            <ul class="wellness-details-list text-start">
-                                <li><i class="fa-solid fa-heart-pulse"></i> Practice deep breathing for 10 minutes every single day.</li>
-                                <li><i class="fa-solid fa-heart-pulse"></i> Engaging with nature significantly lowers baseline cortisol.</li>
-                                <li><i class="fa-solid fa-heart-pulse"></i> Maintain healthy work-life balance to avoid burnout risk.</li>
-                                <li><i class="fa-solid fa-heart-pulse"></i> Regular breaks improve overall cognitive focus and clarity.</li>
-                            </ul>
-                        </div>
-                    </div>
-                    <div class="wellness-card">
-                        <img src="{{ url_for('static', filename='images/sleep.png') }}" alt="Sleep">
-                        <div class="wellness-card-content">
-                            <p class="wellness-card-text">Restorative Sleep & Recovery</p>
-                            <ul class="wellness-details-list text-start">
-                                <li><i class="fa-solid fa-moon"></i> Consistent 7-9 hours of sleep regulates immune function.</li>
-                                <li><i class="fa-solid fa-moon"></i> Avoid blue light from screens 1 hour before scheduled bed.</li>
-                                <li><i class="fa-solid fa-moon"></i> Maintain a dark, cool, quiet environment for deep rest.</li>
-                                <li><i class="fa-solid fa-moon"></i> Quality sleep is crucial for neuro-regenerative processes.</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </div> <!-- End main-dashboard-content -->
-    </div> <!-- End main-wrapper -->
+<!-- Scripts (Moved to end) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<script src="{{ url_for('static', filename='notifications.js') }}"></script>
+<script>
+    // [Previously existing script content...]
+    // I'll re-insert the logic correctly here
+    document.getElementById('report_file').addEventListener('change', function() {
+        const fileName = this.files[0] ? this.files[0].name : '';
+        document.getElementById('file-name-display').innerText = fileName ? 'Selected: ' + fileName : '';
+    });
 
-    {% include 'diagnostic_viewer.html' %}
-    <!-- AI Chatbot -->
-    {% include 'chatbot.html' %}
+    const dropZone = document.getElementById('drop-zone-medical');
+    const fileInput = document.getElementById('medical_images');
+    const dt = new DataTransfer(); 
+    
+    function updateImagesDisplay() {
+        const count = fileInput.files.length;
+        const names = Array.from(fileInput.files).map(f => f.name).join(', ');
+        document.getElementById('medical-images-display').innerText = count > 0 ? `Selected ${count} File(s): ${names}` : '';
+    }
+
+    fileInput.addEventListener('change', function() {
+        for (let i = 0; i < this.files.length; i++) dt.items.add(this.files[i]);
+        this.files = dt.files;
+        updateImagesDisplay();
+    });
+
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.backgroundColor = '#dcfce7'; });
+    dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.style.backgroundColor = '#f0fdf4'; });
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.style.backgroundColor = '#f0fdf4';
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            for (let i = 0; i < e.dataTransfer.files.length; i++) dt.items.add(e.dataTransfer.files[i]);
+            fileInput.files = dt.files;
+            updateImagesDisplay();
+        }
+    });
+
+    function toggleSpecialtyFields() {
+        const specialty = document.getElementById('specialistSelect').value;
+        document.querySelectorAll('.specialty-fields').forEach(el => el.classList.add('d-none'));
+        if (specialty === 'Neurologist') document.getElementById('neuroFields').classList.remove('d-none');
+        else if (specialty === 'Cardiologist') document.getElementById('cardioFields').classList.remove('d-none');
+        else if (specialty === 'Pulmonologist') document.getElementById('pulmoFields').classList.remove('d-none');
+        else if (specialty === 'Dermatologist') document.getElementById('dermaFields').classList.remove('d-none');
+        else if (specialty === 'Oncologist') document.getElementById('oncoFields').classList.remove('d-none');
+        else if (specialty === 'Nephrologist') document.getElementById('nephroFields').classList.remove('d-none');
+    }
+
+    async function suggestSpecialist() {
+        const symptoms = document.getElementById('problem_description').value;
+        if (!symptoms || symptoms.length < 5) { alert("Please describe symptoms first."); return; }
+        const btn = event.currentTarget;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analyzing...';
+        btn.disabled = true;
+        try {
+            const response = await fetch('/api/suggest_specialist', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ symptoms })
+            });
+            const data = await response.json();
+            if (data.success) {
+                const select = document.getElementById('specialistSelect');
+                select.value = data.specialist;
+                toggleSpecialtyFields();
+                const suggestionBox = document.getElementById('aiSuggestionBox');
+                const suggestionText = document.getElementById('aiSuggestionText');
+                suggestionBox.classList.remove('d-none');
+                suggestionText.innerHTML = marked.parse(data.reason);
+            }
+        } catch (err) { console.error(err); } 
+        finally { btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Auto Suggest'; btn.disabled = false; }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const bell = document.getElementById('notifDropdownToggle');
+        const panel = document.getElementById('notifPanel');
+        const badge = document.getElementById('notifBadge');
+        if(bell && panel) {
+            bell.addEventListener('click', function(e) {
+                if (e.target.closest('a')) return;
+                panel.classList.toggle('show');
+                if (panel.classList.contains('show') && badge) {
+                    fetch('{{ url_for("mark_notifications_read") }}', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+                    .then(r => r.json()).then(d => { if(d.success) badge.style.display = 'none'; });
+                }
+            });
+            document.addEventListener('click', e => { if (!bell.contains(e.target)) panel.classList.remove('show'); });
+        }
+    });
+
+    function updateHeroColor(color, element) {
+        document.documentElement.style.setProperty('--hero-bg', color);
+        localStorage.setItem('easyMed-hero-color', color);
+        if (element && element.classList.contains('color-dot')) {
+            document.querySelectorAll('.color-dot').forEach(dot => dot.classList.remove('active'));
+            element.classList.add('active');
+        }
+    }
+</script>
+
+{% include 'diagnostic_viewer.html' %}
+{% include 'chatbot.html' %}
 </body>
 </html>

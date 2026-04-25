@@ -118,7 +118,7 @@
                 <a href="{{ url_for('analytics_dashboard') }}" class="btn btn-sm btn-outline-light rounded-pill px-3 ms-3 border-0">
                     <i class="fa-solid fa-chart-line me-1"></i> Analytics
                 </a>
-                <div class="notification-bell text-white" id="notifDropdownToggle">
+                <div class="notification-bell text-white ms-3" id="notifDropdownToggle" style="cursor: pointer; position: relative;">
                     <i class="fa-solid fa-bell"></i>
                     <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle {{ 'd-none' if unread_count == 0 }}" id="notifBadge"></span>
                     
@@ -148,41 +148,45 @@
                 </div>
             </div>
         </header>
+        
+        <!-- Animated Hero Section (Moved outside to fix the gap) -->
+        <section class="hero-enhancement" id="hero">
+            <div class="hero-theme-controls">
+                <span class="theme-label">Theme color</span>
+                <div class="color-presets">
+                    <div class="color-dot active" style="background: linear-gradient(135deg, #0ea5e9, #22d3ee);" onclick="updateHeroColor('linear-gradient(135deg, #0ea5e9, #22d3ee)', this)"></div>
+                    <div class="color-dot" style="background: linear-gradient(135deg, #6366f1, #a855f7);" onclick="updateHeroColor('linear-gradient(135deg, #6366f1, #a855f7)', this)"></div>
+                    <div class="color-dot" style="background: linear-gradient(135deg, #10b981, #34d399);" onclick="updateHeroColor('linear-gradient(135deg, #10b981, #34d399)', this)"></div>
+                    <div class="color-dot" style="background: linear-gradient(135deg, #f43f5e, #fb7185);" onclick="updateHeroColor('linear-gradient(135deg, #f43f5e, #fb7185)', this)"></div>
+                    <div class="custom-picker-wrapper" title="Choose custom color">
+                        <input type="color" id="hero-color-picker" oninput="updateHeroColor(this.value, this)">
+                    </div>
+                </div>
+            </div>
+
+            <div class="hero-content">
+                <div class="hero-text-container">
+                    <h1 class="hero-title">Welcome to easyMed</h1>
+                    <p class="hero-subtitle">Your Intelligent Multi-Specialty Telemedicine Platform</p>
+                    <ul class="hero-features">
+                        <li><i class="fa-solid fa-circle-check"></i> Real-time doctor consultation</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Multi-specialist system</li>
+                        <li><i class="fa-solid fa-circle-check"></i> AI-powered chatbot</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Medical imaging analysis</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Patient case tracking</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Smart routing and analytics</li>
+                    </ul>
+                </div>
+                <div class="hero-illustration">
+                    <img src="{{ url_for('static', filename='images/doctor_illustration.png') }}" alt="Medical Professional">
+                </div>
+            </div>
+            <a href="#main-dashboard-content" class="scroll-indicator">
+                <i class="fa-solid fa-chevron-down"></i>
+            </a>
+        </section>
 
         <div class="main-dashboard-content p-4" id="main-dashboard-content">
-            <!-- Animated Hero Section -->
-            <section class="hero-enhancement" id="hero">
-                <div class="hero-theme-controls">
-                    <span class="theme-label">Theme color</span>
-                    <div class="color-presets">
-                        <div class="color-dot active" style="background: linear-gradient(135deg, #0ea5e9, #22d3ee);" onclick="updateHeroColor('linear-gradient(135deg, #0ea5e9, #22d3ee)', this)"></div>
-                        <div class="color-dot" style="background: linear-gradient(135deg, #6366f1, #a855f7);" onclick="updateHeroColor('linear-gradient(135deg, #6366f1, #a855f7)', this)"></div>
-                        <div class="color-dot" style="background: linear-gradient(135deg, #10b981, #34d399);" onclick="updateHeroColor('linear-gradient(135deg, #10b981, #34d399)', this)"></div>
-                        <div class="color-dot" style="background: linear-gradient(135deg, #f43f5e, #fb7185);" onclick="updateHeroColor('linear-gradient(135deg, #f43f5e, #fb7185)', this)"></div>
-                        <div class="custom-picker-wrapper" title="Choose custom color">
-                            <input type="color" id="hero-color-picker" oninput="updateHeroColor(this.value, this)">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="hero-content">
-                    <div class="hero-text-container">
-                        <h1 class="hero-title">Welcome to easyMed</h1>
-                        <p class="hero-subtitle">Your Intelligent Multi-Specialty Telemedicine Platform</p>
-                        <ul class="hero-features">
-                            <li><i class="fa-solid fa-circle-check"></i> Real-time doctor consultation</li>
-                            <li><i class="fa-solid fa-circle-check"></i> Multi-specialist system</li>
-                            <li><i class="fa-solid fa-circle-check"></i> AI-powered chatbot</li>
-                            <li><i class="fa-solid fa-circle-check"></i> Medical imaging analysis</li>
-                            <li><i class="fa-solid fa-circle-check"></i> Patient case tracking</li>
-                            <li><i class="fa-solid fa-circle-check"></i> Smart routing and analytics</li>
-                        </ul>
-                    </div>
-                    <div class="hero-illustration">
-                        <img src="{{ url_for('static', filename='images/doctor_illustration.png') }}" alt="Medical Professional">
-                    </div>
-                </div>
-            </section>
             {% with messages = get_flashed_messages(with_categories=true) %}
               {% if messages %}
                 {% for category, message in messages %}
@@ -401,9 +405,6 @@
         })();
 
     </script>
-            </div> <!-- End content-area -->
-        </div> <!-- End main-dashboard-content -->
-    </div> <!-- End main-wrapper -->
 
     {% include 'diagnostic_viewer.html' %}
     {% include 'chatbot.html' %}

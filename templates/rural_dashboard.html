@@ -17,6 +17,17 @@
     <script src="{{ url_for('static', filename='loader.js') }}" defer></script>
     <script src="{{ url_for('static', filename='theme-toggle.js') }}" defer></script>
     <script src="{{ url_for('static', filename='sidebar.js') }}" defer></script>
+    <script>
+        // Inline fail-safe for sidebar toggle
+        function toggleMobileMenu() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if(sidebar && overlay) {
+                sidebar.classList.toggle('active');
+                overlay.classList.toggle('active');
+            }
+        }
+    </script>
     <style>
         .drag-drop-zone {
             border: 2px dashed #cbd5e1;
@@ -107,7 +118,7 @@
     <div class="main-wrapper">
         <!-- TOP HEADER (Always at the top) -->
         <header class="top-header">
-            <button class="menu-toggle d-lg-none me-3" id="sidebarToggle">
+            <button class="menu-toggle d-lg-none me-3" onclick="toggleMobileMenu()">
                 <i class="fa-solid fa-bars"></i>
             </button>
             <div class="header-ecg"></div>

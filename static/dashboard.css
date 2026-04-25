@@ -206,34 +206,44 @@ body {
 }
 
 .top-header {
-    background: linear-gradient(135deg, rgba(30, 136, 229, 0.95), rgba(25, 118, 210, 0.98));
-    backdrop-filter: blur(10px);
+    background: none; 
     color: white;
-    padding: calc(var(--safe-top) + 10px) 30px 10px;
-    height: auto;
-    min-height: calc(var(--header-height) + var(--safe-top));
+    padding: var(--safe-top) 15px 0; /* Reduced padding */
+    height: 55px; /* Fixed smaller height */
     display: flex;
     justify-content: space-between;
     align-items: center;
     position: sticky;
     top: 0;
     z-index: 1000;
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
     overflow: hidden;
 }
 
-/* Animated ECG Line in Header Background */
+.top-header::before {
+    content: '';
+    position: absolute;
+    top: var(--safe-top); 
+    left: 0;
+    right: 0;
+    height: 55px; /* Matching the header height */
+    background: linear-gradient(135deg, rgba(30, 136, 229, 0.95), rgba(25, 118, 210, 0.98));
+    backdrop-filter: blur(10px);
+    z-index: -2;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+}
+
 .header-ecg {
     position: absolute;
     left: 0;
-    top: 0;
+    top: var(--safe-top); 
     width: 100%;
-    height: 100%;
+    height: 25px; /* Very slim signal */
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 20' preserveAspectRatio='none'%3E%3Cpath d='M0,10 L20,10 L25,5 L30,15 L35,2 L40,18 L45,10 L100,10' fill='none' stroke='rgba(255,255,255,0.4)' stroke-width='1.5' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
     background-size: 200px 100%;
     background-repeat: repeat-x;
     animation: slideEcg 3s linear infinite;
     pointer-events: none;
+    z-index: -1;
 }
 
 @keyframes slideEcg {
@@ -577,10 +587,11 @@ body {
     }
 
     .top-header h4 {
-        font-size: 1rem !important;
-        white-space: normal;
-        line-height: 1.2;
-        max-width: 120px;
+        font-size: 0.9rem !important;
+        white-space: nowrap;
+        line-height: normal;
+        max-width: none;
+        margin: 0 !important;
     }
 
     .header-user-info {
@@ -605,11 +616,12 @@ body {
         color: white;
         background: rgba(255,255,255,0.2);
         border: none;
-        width: 40px;
-        height: 40px;
-        border-radius: 8px;
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
         cursor: pointer;
         z-index: 1001;
+        font-size: 1.1rem;
     }
 
     .content-area {

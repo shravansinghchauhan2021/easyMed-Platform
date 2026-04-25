@@ -209,14 +209,14 @@ body {
     background: none; 
     color: white;
     padding: var(--safe-top) 15px 8px; 
-    min-height: calc(65px + var(--safe-top)); /* Slightly taller for perfect air */
+    min-height: calc(65px + var(--safe-top)); 
     display: flex;
     justify-content: space-between;
     align-items: center;
     position: sticky;
     top: 0;
-    z-index: 1000;
-    overflow: hidden;
+    z-index: 999;
+    overflow: visible;
 }
 
 .top-header::before {
@@ -230,6 +230,11 @@ body {
     backdrop-filter: blur(10px);
     z-index: -2;
     box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.notifications-panel {
+    z-index: 2000;
 }
 
 .header-ecg {

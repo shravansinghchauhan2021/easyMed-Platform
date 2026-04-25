@@ -29,7 +29,6 @@
         }
     </script>
     <style>
-        body { background-color: #f8fafc; }
         .patient-card {
             border: none;
             border-radius: 12px;
@@ -329,6 +328,42 @@
             }
         })();
 
+        // Theme Toggle Logic
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            const icon = document.querySelector('#themeToggle i');
+            if(icon) icon.className = isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+        });
+
+        // Notifications Toggle Logic
+        document.addEventListener('DOMContentLoaded', function() {
+            const bell = document.getElementById('notifDropdownToggle');
+            const panel = document.getElementById('notifPanel');
+            const badge = document.getElementById('notifBadge');
+            
+            if(bell && panel) {
+                bell.addEventListener('click', function(e) {
+                    if (e.target.closest('a')) return;
+                    panel.classList.toggle('show');
+                    if (panel.classList.contains('show') && badge) {
+                        fetch('{{ url_for("mark_notifications_read") }}', { 
+                            method: 'POST', 
+                            headers: { 'Content-Type': 'application/json' } 
+                        }).then(r => r.json()).then(d => { if(d.success) badge.style.display = 'none'; });
+                    }
+                });
+                document.addEventListener('click', e => { if (!bell.contains(e.target)) panel.classList.remove('show'); });
+            }
+
+            // Restore theme state
+            if(localStorage.getItem('theme') === 'dark') {
+                document.body.classList.add('dark-mode');
+                const icon = document.querySelector('#themeToggle i');
+                if(icon) icon.className = 'fa-solid fa-sun';
+            }
+        });
     </script>
     {% include 'chatbot.html' %}
 </body>

@@ -130,8 +130,8 @@
                     <span class="status-dot status-online" id="userStatusDot"></span>
                     <i class="fa-solid fa-user-doctor me-2"></i>{{ session['username'] }}
                 </span>
-                <a href="{{ url_for('analytics_dashboard') }}" class="btn btn-sm btn-outline-light rounded-pill px-3 ms-3 border-0">
-                    <i class="fa-solid fa-chart-line me-1"></i> Analytics
+                <a href="{{ url_for('analytics_dashboard') }}" class="btn btn-sm btn-outline-light rounded-pill px-2 ms-2 border-0">
+                    <i class="fa-solid fa-chart-line me-1"></i> <span>Analytics</span>
                 </a>
                 <button class="theme-toggle-btn ms-3" id="themeToggle" title="Toggle Dark/Light Mode">
                     <i class="fa-solid fa-moon"></i>
@@ -672,7 +672,62 @@
     </script>
             
         </section>
-    </div> <!-- End main-dashboard-content -->
+            <!-- Bottom Wellness Section -->
+            <section class="wellness-section">
+                <h2 class="wellness-title">Healthy Living Tips</h2>
+                <div class="wellness-grid">
+                    <div class="wellness-card">
+                        <img src="{{ url_for('static', filename='images/exercise.png') }}" alt="Exercise">
+                        <div class="wellness-card-content">
+                            <p class="wellness-card-text">Physical Activity for Longevity</p>
+                            <ul class="wellness-details-list text-start">
+                                <li><i class="fa-solid fa-check"></i> Aim for 150 minutes of moderate aerobic activity weekly.</li>
+                                <li><i class="fa-solid fa-check"></i> Daily walking reduces current risk of stroke and heart disease.</li>
+                                <li><i class="fa-solid fa-check"></i> Incorporate strength training twice a week for muscle health.</li>
+                                <li><i class="fa-solid fa-check"></i> Activity improves mental clarity and reduces clinical brain fog.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="wellness-card">
+                        <img src="{{ url_for('static', filename='images/healthy_food.png') }}" alt="Healthy Food">
+                        <div class="wellness-card-content">
+                            <p class="wellness-card-text">Nutritional Balance & Vitality</p>
+                            <ul class="wellness-details-list text-start">
+                                <li><i class="fa-solid fa-pepper-hot"></i> Prioritize whole grains, lean proteins, and leafy greens.</li>
+                                <li><i class="fa-solid fa-pepper-hot"></i> Minimize processed sugars to maintain steady energy levels.</li>
+                                <li><i class="fa-solid fa-pepper-hot"></i> Hydrate with at least 8-10 glasses of clean water daily.</li>
+                                <li><i class="fa-solid fa-pepper-hot"></i> Antioxidant-rich foods support rapid cellular repair.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="wellness-card">
+                        <img src="{{ url_for('static', filename='images/meditation.png') }}" alt="Meditation">
+                        <div class="wellness-card-content">
+                            <p class="wellness-card-text">Mindfulness & Mental Peace</p>
+                            <ul class="wellness-details-list text-start">
+                                <li><i class="fa-solid fa-heart-pulse"></i> Practice deep breathing for 10 minutes every single day.</li>
+                                <li><i class="fa-solid fa-heart-pulse"></i> Engaging with nature significantly lowers baseline cortisol.</li>
+                                <li><i class="fa-solid fa-heart-pulse"></i> Maintain healthy work-life balance to avoid burnout risk.</li>
+                                <li><i class="fa-solid fa-heart-pulse"></i> Regular breaks improve overall cognitive focus and clarity.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="wellness-card">
+                        <img src="{{ url_for('static', filename='images/sleep.png') }}" alt="Sleep">
+                        <div class="wellness-card-content">
+                            <p class="wellness-card-text">Restorative Sleep & Recovery</p>
+                            <ul class="wellness-details-list text-start">
+                                <li><i class="fa-solid fa-moon"></i> Consistent 7-9 hours of sleep regulates immune function.</li>
+                                <li><i class="fa-solid fa-moon"></i> Avoid blue light from screens 1 hour before scheduled bed.</li>
+                                <li><i class="fa-solid fa-moon"></i> Maintain a dark, cool, quiet environment for deep rest.</li>
+                                <li><i class="fa-solid fa-moon"></i> Quality sleep is crucial for neuro-regenerative processes.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div> <!-- End main-dashboard-content -->
+
 </div> <!-- End main-wrapper -->
 
 <!-- Scripts (Moved to end) -->

@@ -603,9 +603,13 @@ body {
         display: none; /* Hide user badge on very small mobile to save space */
     }
 
-    .header-user-info .btn-sm {
-        padding: 4px 8px;
-        font-size: 0.75rem;
+    .header-user-info .btn-sm span {
+        display: none; /* Hide 'Analytics' text on busy mobile headers */
+    }
+    
+    .header-user-info .btn-sm i {
+        margin: 0 !important;
+        font-size: 1.1rem;
     }
 
     /* Hide Analytics text on mobile, keep icon only */

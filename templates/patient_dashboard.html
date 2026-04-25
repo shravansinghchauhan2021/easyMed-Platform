@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='loader.css') }}">
     <script src="{{ url_for('static', filename='loader.js') }}" defer></script>
     <script src="{{ url_for('static', filename='theme-toggle.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='sidebar.js') }}" defer></script>
     <style>
         body { background-color: #f8fafc; }
         .patient-card {
@@ -318,32 +319,6 @@
             }
         })();
 
-        // Mobile Sidebar Toggle Logic
-        document.addEventListener('DOMContentLoaded', function() {
-            const sidebarToggle = document.getElementById('sidebarToggle');
-            const sidebarOverlay = document.getElementById('sidebarOverlay');
-            const sidebar = document.querySelector('.sidebar');
-
-            if (sidebarToggle && sidebar && sidebarOverlay) {
-                sidebarToggle.addEventListener('click', function() {
-                    sidebar.classList.toggle('active');
-                    sidebarOverlay.classList.toggle('active');
-                });
-
-                sidebarOverlay.addEventListener('click', function() {
-                    sidebar.classList.remove('active');
-                    sidebarOverlay.classList.remove('active');
-                });
-
-                // Close sidebar when clicking a link on mobile
-                document.querySelectorAll('.nav-link').forEach(link => {
-                    link.addEventListener('click', () => {
-                        sidebar.classList.remove('active');
-                        sidebarOverlay.classList.remove('active');
-                    });
-                });
-            }
-        });
     </script>
     {% include 'chatbot.html' %}
 </body>

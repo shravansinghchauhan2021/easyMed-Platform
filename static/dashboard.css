@@ -23,6 +23,8 @@ html {
     --border-color: #f1f5f9;
     --sidebar-width: 250px;
     --header-height: 70px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
     --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
     --hover-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
     --transition-speed: 0.3s;
@@ -104,7 +106,8 @@ body {
     z-index: 1000;
     display: flex;
     flex-direction: column;
-    padding-top: 20px;
+    padding-top: calc(var(--safe-top) + 20px);
+    padding-bottom: var(--safe-bottom);
     transition: background var(--transition-speed);
 }
 
@@ -171,7 +174,7 @@ body {
 }
 
 .sidebar-footer {
-    padding: 20px;
+    padding: 20px 20px calc(20px + var(--safe-bottom));
     border-top: 1px solid var(--border-color);
 }
 
@@ -203,9 +206,10 @@ body {
 }
 
 .top-header {
-    height: var(--header-height);
+    height: auto;
+    min-height: calc(var(--header-height) + var(--safe-top));
     background: var(--header-bg);
-    padding: 0 30px;
+    padding: var(--safe-top) 30px 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -380,7 +384,7 @@ body {
    PAGE CONTENT
 ========================================= */
 .content-area {
-    padding: 30px;
+    padding: 30px 30px calc(30px + var(--safe-bottom));
     flex: 1;
     width: 100%;
     max-width: 100%;
@@ -557,10 +561,18 @@ body {
     }
 
     .top-header {
-        padding: 0 10px;
+        padding: calc(var(--safe-top) + 20px) 15px 10px;
         height: auto;
-        min-height: var(--header-height);
+        min-height: calc(var(--header-height) + var(--safe-top) + 15px);
         flex-wrap: nowrap;
+    }
+
+    .sidebar-footer {
+        padding-bottom: calc(var(--safe-bottom) + 30px);
+    }
+    
+    .content-area {
+        padding: 15px 15px calc(var(--safe-bottom) + 80px);
     }
 
     .top-header h4 {

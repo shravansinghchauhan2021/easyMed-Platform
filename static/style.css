@@ -248,9 +248,15 @@ html {
 }
 
 .form-control:focus {
-    background: rgba(15, 23, 42, 0.8);
+    background: #ffffff;
+    color: #000000;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+}
+
+.dark-mode .form-control:focus {
+    background: #0f172a;
+    color: #ffffff;
 }
 
 select.form-control {

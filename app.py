@@ -115,6 +115,25 @@ def init_db():
         )
     ''')
     conn.commit()
+
+    db_execute(conn, f'''
+        CREATE TABLE IF NOT EXISTS patients (
+            id {pk_style},
+            patient_name TEXT,
+            patient_mobile TEXT,
+            patient_user_id INTEGER,
+            age INTEGER,
+            gender TEXT,
+            specialist_type TEXT,
+            blood_pressure TEXT,
+            heart_rate INTEGER,
+            oxygen_level INTEGER,
+            problem_description TEXT,
+            priority TEXT DEFAULT 'Normal',
+            status TEXT DEFAULT 'Pending'
+        )
+    ''')
+    conn.commit()
     
     # --- Production Schema Hardening (Ensure all columns exist) ---
     if is_postgres:
@@ -142,7 +161,13 @@ def init_db():
             ('report_file_path', 'TEXT'),
             ('report_file', 'TEXT'),
             ('final_diagnosis', 'TEXT'),
-            ('final_recommendations', 'TEXT')
+            ('final_recommendations', 'TEXT'),
+            ('specialist_type', 'TEXT'),
+            ('heart_rate', 'INTEGER'),
+            ('blood_pressure', 'TEXT'),
+            ('oxygen_level', 'INTEGER'),
+            ('patient_name', 'TEXT'),
+            ('rural_doctor_id', 'INTEGER')
         ]
         for col_name, col_type in patients_cols:
             try:
@@ -179,6 +204,12 @@ def init_db():
         ('patients', 'priority_level', 'TEXT'), ('patients', 'final_diagnosis', 'TEXT'),
         ('patients', 'final_recommendations', 'TEXT'), ('patients', 'assigned_doctor_id', 'INTEGER'),
         ('patients', 'report_file_path', 'TEXT'),
+        ('patients', 'specialist_type', 'TEXT'),
+        ('patients', 'heart_rate', 'INTEGER'),
+        ('patients', 'blood_pressure', 'TEXT'),
+        ('patients', 'oxygen_level', 'INTEGER'),
+        ('patients', 'patient_name', 'TEXT'),
+        ('patients', 'rural_doctor_id', 'INTEGER'),
         ('patients', 'created_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
     ]
     
@@ -969,8 +1000,12 @@ def add_patient():
         gender = request.form.get('gender', 'Other')
         specialist_type = request.form.get('specialist_type', 'Neurologist')
         blood_pressure = request.form.get('blood_pressure', '')
-        heart_rate = request.form.get('heart_rate', '')
-        oxygen_level = request.form.get('oxygen_level', '')
+        
+        heart_rate_raw = request.form.get('heart_rate', '')
+        heart_rate = int(heart_rate_raw) if heart_rate_raw.strip().isdigit() else None
+        
+        oxygen_raw = request.form.get('oxygen_level', '')
+        oxygen_level = int(oxygen_raw) if oxygen_raw.strip().isdigit() else None
         problem_description = request.form.get('problem_description', '')
         priority = request.form.get('priority', 'Normal')
         

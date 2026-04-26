@@ -328,6 +328,14 @@
                                         </div>
                                     </div>
                                     <div class="col-md-6">
+                                        <div class="p-3 bg-light rounded-4 border-start border-info border-4 shadow-sm">
+                                            <label class="form-label fw-bold text-info small d-block mb-2">Select Individual Specialist</label>
+                                            <select name="assigned_specialist_id" id="assignedSpecialist" class="form-select border-0 bg-transparent fw-bold" required>
+                                                <option value="">Choosing Specialty First...</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
                                         <div class="p-3 bg-light rounded-4 border-start border-warning border-4 shadow-sm">
                                             <label for="priority" class="form-label fw-bold text-warning small d-block mb-2">Priority Classification</label>
                                             <select class="form-select border-0 bg-transparent fw-bold" name="priority">
@@ -339,7 +347,7 @@
                                     </div>
                                 </div>
                                 
-                                <div class="mb-4">
+                                <div class="mb-3">
                                     <label for="problem_description" class="form-label fw-bold">Chief Complaint *</label>
                                     <textarea class="form-control" id="problem_description" name="problem_description" rows="3" required placeholder="Describe symptoms and medical history..."></textarea>
                                 </div>
@@ -532,17 +540,44 @@
 
         function toggleSpecialtyFields() {
             const specialty = document.getElementById('specialistSelect').value;
-            // Hide all
-            document.querySelectorAll('.specialty-fields').forEach(el => el.classList.add('d-none'));
-            
-            // Show selected
+            const fields = document.querySelectorAll('.specialty-fields');
+            fields.forEach(f => f.classList.add('d-none'));
+
             if (specialty === 'Neurologist') document.getElementById('neuroFields').classList.remove('d-none');
             else if (specialty === 'Cardiologist') document.getElementById('cardioFields').classList.remove('d-none');
             else if (specialty === 'Pulmonologist') document.getElementById('pulmoFields').classList.remove('d-none');
             else if (specialty === 'Dermatologist') document.getElementById('dermaFields').classList.remove('d-none');
             else if (specialty === 'Oncologist') document.getElementById('oncoFields').classList.remove('d-none');
             else if (specialty === 'Nephrologist') document.getElementById('nephroFields').classList.remove('d-none');
+            
+            // New logic: Fetch specialists
+            updateSpecialistList(specialty);
         }
+
+        async function updateSpecialistList(specialty) {
+            const select = document.getElementById('assignedSpecialist');
+            select.innerHTML = '<option value="">Loading doctors...</option>';
+            
+            try {
+                const res = await fetch(`/api/get_specialists/${specialty}`);
+                const data = await res.json();
+                
+                if (data.success && data.doctors.length > 0) {
+                    select.innerHTML = data.doctors.map(d => 
+                        `<option value="${d.id}">${d.status === 'Online' ? '🟢' : '⚪'} Dr. ${d.username} (${d.status})</option>`
+                    ).join('');
+                } else {
+                    select.innerHTML = '<option value="">No specialists found for this type</option>';
+                }
+            } catch (e) {
+                select.innerHTML = '<option value="">Error loading doctors</option>';
+            }
+        }
+        
+        // Initial load
+        document.addEventListener('DOMContentLoaded', () => {
+            toggleSpecialtyFields();
+        });
 
         async function suggestSpecialist() {
             const symptoms = document.getElementById('problem_description').value;

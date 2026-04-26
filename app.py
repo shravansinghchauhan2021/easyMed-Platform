@@ -1018,8 +1018,16 @@ def add_patient():
             priority = 'Emergency'
             flash('AI System detected a potential emergency and set priority to high.', 'warning')
 
-        # Smart Allocation
-        specialist_id, assigned_doctor_name, is_online = find_best_specialist(specialist_type)
+        # Smart Allocation (Manual override logic)
+        manual_id = request.form.get('assigned_specialist_id')
+        if manual_id and manual_id.isdigit():
+            specialist_id = int(manual_id)
+            # Fetch name for flash message
+            spec_user = db_execute(conn, 'SELECT username FROM users WHERE id = ?', (specialist_id,)).fetchone()
+            assigned_doctor_name = spec_user['username'] if spec_user else "Specialist"
+        else:
+            # Fallback to auto-allocation if not specified
+            specialist_id, assigned_doctor_name, is_online = find_best_specialist(specialist_type)
         
         # Specialty parameters
         consciousness_level = request.form.get('consciousness_level', 'Alert')
@@ -1901,6 +1909,18 @@ def api_analyze_scan(patient_id):
         'report': report,
         'severity': severity
     })
+
+@app.route('/api/get_specialists/<specialty>')
+def get_specialists(specialty):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    conn = get_db_connection()
+    doctors = db_execute(conn, 'SELECT id, username, status FROM users WHERE profession = ?', (specialty,)).fetchall()
+    conn.close()
+    
+    doctor_list = [{'id': doc['id'], 'username': doc['username'], 'status': doc['status']} for doc in doctors]
+    return jsonify({'success': True, 'doctors': doctor_list})
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=False)

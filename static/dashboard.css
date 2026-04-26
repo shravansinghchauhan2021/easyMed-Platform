@@ -213,8 +213,8 @@ body {
 .top-header {
     background: none; 
     color: white;
-    padding: var(--safe-top) 15px 4px; 
-    min-height: calc(45px + var(--safe-top)); 
+    padding: var(--safe-top) 15px 8px; 
+    min-height: calc(65px + var(--safe-top)); 
     display: flex;
     margin-top: 0; /* Ensure no margin at the top */
     justify-content: space-between;
@@ -223,14 +223,6 @@ body {
     top: 0;
     z-index: 999;
     overflow: visible;
-}
-
-.top-header h4 {
-    font-size: 1.1rem; /* Slightly smaller for slim header */
-}
-
-.top-header .btn-sm {
-    padding: 2px 8px; /* Slimmer buttons */
 }
 
 .top-header::before {
@@ -670,6 +662,18 @@ body {
 
     .sidebar-overlay.active {
         display: block;
+    }
+
+    /* MOBILE SLIM HEADER FIX */
+    .top-header {
+        padding: var(--safe-top) 15px 4px; 
+        min-height: calc(45px + var(--safe-top)); 
+    }
+    .top-header h4 {
+        font-size: 1.1rem;
+    }
+    .top-header .btn-sm {
+        padding: 2px 8px;
     }
 }
 

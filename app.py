@@ -5,6 +5,9 @@ eventlet.monkey_patch()
 import os
 import json
 import sqlite3
+import time
+import requests
+import threading
 from datetime import datetime
 from werkzeug.utils import secure_filename
 import traceback
@@ -1349,6 +1352,31 @@ def case_history():
     
     return render_template('case_history.html', patients=patients, unread_count=unread_count, notifications=notifications)
 
+# --- Self-Ping / Keep-Alive System ---
+def keep_alive():
+    """Pings the app every 14 minutes to prevent Render sleep mode"""
+    # Wait for app to boot
+    time.sleep(30)
+    
+    url = os.environ.get('RENDER_EXTERNAL_URL')
+    if not url:
+        print("[KEEP-ALIVE] RENDER_EXTERNAL_URL not found. Skipping self-ping.")
+        return
+
+    print(f"[KEEP-ALIVE] Starting background pinger for {url}")
+    while True:
+        try:
+            # We use a 14-minute interval (Render sleeps at 15m)
+            time.sleep(14 * 60)
+            requests.get(url, timeout=10)
+            print(f"[KEEP-ALIVE] Heartbeat sent at {datetime.now()}")
+        except Exception as e:
+            print(f"[KEEP-ALIVE] Ping failed: {e}")
+
+@app.route('/ping')
+def ping():
+    return "PONG", 200
+
 @app.route('/chatbot/query', methods=['POST'])
 def chatbot_query():
     if 'user_id' not in session:
@@ -1931,4 +1959,9 @@ def get_specialists(specialty):
     return jsonify({'success': True, 'doctors': doctor_list})
 
 if __name__ == '__main__':
+    # Start Keep-Alive thread
+    if os.environ.get('RENDER_EXTERNAL_URL'):
+        ka_thread = threading.Thread(target=keep_alive, daemon=True)
+        ka_thread.start()
+        
     socketio.run(app, host='0.0.0.0', port=5000, debug=False)

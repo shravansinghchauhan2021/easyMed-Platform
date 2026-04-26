@@ -1372,50 +1372,58 @@ def specialist_dashboard():
     if 'user_id' not in session or session.get('profession') not in SPECIALIST_ROLES:
         return redirect(url_for('login'))
         
-    conn = get_db_connection()
-    pending_patients = db_execute(conn, "SELECT p.*, r.username as rural_doctor_name, r.status as doctor_status \
-                                    FROM patients p \
-                                    JOIN users r ON p.rural_doctor_id = r.id \
-                                    WHERE p.status = ? AND p.specialist_type = ? AND (p.specialist_id = ? OR p.specialist_id IS NULL) \
-                                    ORDER BY CASE WHEN p.priority = 'Emergency' THEN 0 ELSE 1 END, p.id DESC", ('Pending', session['profession'], session['user_id'])).fetchall()
+    conn = None
+    try:
+        conn = get_db_connection()
+        pending_patients = db_execute(conn, "SELECT p.*, r.username as rural_doctor_name, r.status as doctor_status \
+                                        FROM patients p \
+                                        JOIN users r ON p.rural_doctor_id = r.id \
+                                        WHERE p.status = ? AND p.specialist_type = ? AND (p.specialist_id = ? OR p.specialist_id IS NULL) \
+                                        ORDER BY CASE WHEN p.priority = 'Emergency' THEN 0 ELSE 1 END, p.id DESC", ('Pending', session['profession'], session['user_id'])).fetchall()
+        
+        accepted_patients = db_execute(conn, "SELECT p.*, r.username as rural_doctor_name \
+                                          FROM patients p \
+                                          JOIN users r ON p.rural_doctor_id = r.id \
+                                          WHERE p.specialist_id = ? AND p.status IN (?, ?, ?) \
+                                          ORDER BY CASE WHEN p.priority = 'Emergency' THEN 0 ELSE 1 END, p.id DESC", 
+                                          (session['user_id'], 'Accepted', 'Reviewed', 'Completed')).fetchall()
+                                          
+        total_system_patients = db_get_count(conn, 'SELECT COUNT(*) FROM patients WHERE specialist_type = ? AND (specialist_id = ? OR specialist_id IS NULL)', (session['profession'], session['user_id']))
+        total_pending_patients = db_get_count(conn, 'SELECT COUNT(*) FROM patients WHERE status = ? AND specialist_type = ? AND (specialist_id = ? OR specialist_id IS NULL)', ('Pending', session['profession'], session['user_id']))
+        
+        specialty_stats = {
+            'emergency_cases': db_get_count(conn, "SELECT COUNT(*) FROM patients WHERE priority = 'Emergency' AND specialist_type = ?", (session['profession'],)),
+            'reviewed_cases': db_get_count(conn, "SELECT COUNT(*) FROM patients WHERE status = 'Reviewed' AND specialist_id = ?", (session['user_id'],)),
+            'stroke_suspicion': 0,
+            'heart_critical': 0
+        }
+        
+        if session['profession'] == 'Neurologist':
+            specialty_stats['stroke_suspicion'] = db_get_count(conn, "SELECT COUNT(*) FROM patients WHERE specialist_type = 'Neurologist' AND (consciousness_level = 'Unconscious' OR speech_condition != 'Normal')")
+        elif session['profession'] == 'Cardiologist':
+            # Use CAST and COALESCE to be ultra-safe on Postgres
+            specialty_stats['heart_critical'] = db_get_count(conn, "SELECT COUNT(*) FROM patients WHERE specialist_type = 'Cardiologist' AND (CAST(COALESCE(CAST(heart_rate AS TEXT), '0') AS INTEGER) > 100 OR CAST(COALESCE(CAST(heart_rate AS TEXT), '0') AS INTEGER) < 60 AND heart_rate IS NOT NULL)")
     
-    accepted_patients = db_execute(conn, "SELECT p.*, r.username as rural_doctor_name \
-                                      FROM patients p \
-                                      JOIN users r ON p.rural_doctor_id = r.id \
-                                      WHERE p.specialist_id = ? AND p.status IN (?, ?, ?) \
-                                      ORDER BY CASE WHEN p.priority = 'Emergency' THEN 0 ELSE 1 END, p.id DESC", 
-                                      (session['user_id'], 'Accepted', 'Reviewed', 'Completed')).fetchall()
-                                      
-    # Specialty Statistics (Assigned to current user)
-    total_system_patients = db_get_count(conn, 'SELECT COUNT(*) FROM patients WHERE specialist_type = ? AND (specialist_id = ? OR specialist_id IS NULL)', (session['profession'], session['user_id']))
-    total_pending_patients = db_get_count(conn, 'SELECT COUNT(*) FROM patients WHERE status = ? AND specialist_type = ? AND (specialist_id = ? OR specialist_id IS NULL)', ('Pending', session['profession'], session['user_id']))
-    
-    # Specialty-specific counters
-    specialty_stats = {
-        'emergency_cases': db_get_count(conn, "SELECT COUNT(*) FROM patients WHERE priority = 'Emergency' AND specialist_type = ?", (session['profession'],)),
-        'reviewed_cases': db_get_count(conn, "SELECT COUNT(*) FROM patients WHERE status = 'Reviewed' AND specialist_id = ?", (session['user_id'],))
-    }
-    
-    # Add context-specific stats for Neurologist for backward compatibility/demo
-    if session['profession'] == 'Neurologist':
-        specialty_stats['stroke_suspicion'] = db_get_count(conn, "SELECT COUNT(*) FROM patients WHERE specialist_type = 'Neurologist' AND (consciousness_level = 'Unconscious' OR speech_condition != 'Normal')")
-    elif session['profession'] == 'Cardiologist':
-        specialty_stats['heart_critical'] = db_get_count(conn, "SELECT COUNT(*) FROM patients WHERE specialist_type = 'Cardiologist' AND (heart_rate > 100 OR heart_rate < 60)")
-
-    # Get unread notifications
-    notifications = db_execute(conn, 'SELECT * FROM notifications WHERE user_id = ? ORDER BY id DESC LIMIT 10', (session['user_id'],)).fetchall()
-    unread_count = sum(1 for n in notifications if not n['read_status'])
-
-    conn.close()
-    
-    return render_template('specialist_dashboard.html', 
-                           pending=pending_patients, 
-                           accepted=accepted_patients,
-                           total=total_system_patients,
-                           pending_count=total_pending_patients,
-                           specialty_stats=specialty_stats,
-                           notifications=notifications,
-                           unread_count=unread_count)
+        notifications = db_execute(conn, 'SELECT * FROM notifications WHERE user_id = ? ORDER BY id DESC LIMIT 10', (session['user_id'],)).fetchall()
+        unread_count = sum(1 for n in notifications if not n['read_status'])
+        conn.close()
+        
+        return render_template('specialist_dashboard.html', 
+                               pending=pending_patients, 
+                               accepted=accepted_patients,
+                               total=total_system_patients,
+                               pending_count=total_pending_patients,
+                               specialty_stats=specialty_stats,
+                               notifications=notifications,
+                               unread_count=unread_count)
+    except Exception as e:
+        if conn:
+            try: conn.close()
+            except: pass
+        print(f">>> [DASHBOARD ERROR] {session['profession']}: {str(e)}")
+        traceback.print_exc()
+        flash(f"Dashboard Diagnostic: {str(e)}. Please retry.", "error")
+        return redirect(url_for('login'))
 
 @app.route('/update_case_status/<int:patient_id>', methods=['POST'])
 def update_case_status(patient_id):

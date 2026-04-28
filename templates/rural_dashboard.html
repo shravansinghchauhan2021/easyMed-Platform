@@ -12,6 +12,8 @@
     <!-- Custom Dashboard CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='dashboard_enhancements.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="{{ url_for('static', filename='notifications.js') }}" defer></script>
     <!-- Professional Loader Assets -->
     <link rel="stylesheet" href="{{ url_for('static', filename='loader.css') }}">
     <script src="{{ url_for('static', filename='loader.js') }}" defer></script>
@@ -45,7 +47,7 @@
         }
     </style>
 </head>
-<body>
+<body data-user-id="{{ session['user_id'] }}">
     {% include 'loader.html' %}
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
     <div class="hospital-pattern"></div>

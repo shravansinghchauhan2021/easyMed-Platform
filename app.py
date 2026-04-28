@@ -1009,7 +1009,7 @@ def add_patient():
     if 'user_id' not in session or session.get('profession') != 'Rural Doctor':
         return redirect(url_for('login'))
 
-    conn = None
+    conn = get_db_connection()
     try:
         patient_name = request.form['patient_name']
         patient_mobile = request.form.get('patient_mobile', '')
@@ -1027,6 +1027,7 @@ def add_patient():
         oxygen_level = int(oxygen_raw) if oxygen_raw.strip().isdigit() else None
         problem_description = request.form.get('problem_description', '')
         priority = request.form.get('priority', 'Normal')
+        is_online = False
         
         # AI Assistance: Auto-Priority and Suggestion
         ai_priority = detect_emergency_ai(problem_description, 
@@ -1076,8 +1077,6 @@ def add_patient():
                 file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
                 report_file = filename
 
-        conn = get_db_connection()
-        
         # Robust Mobile Normalization: Link accounts even if formatting differs (spaces, +, dashes)
         clean_mobile = "".join(filter(str.isdigit, patient_mobile))
         patient_user = None

@@ -399,6 +399,27 @@
             document.body.removeChild(a);
         }
 
+        // --- Auto-load logic ---
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const targetFile = urlParams.get('file_path');
+            
+            if (targetFile) {
+                // Find the series item with this file path
+                const items = document.querySelectorAll('#dicomTab .series-item');
+                for (let item of items) {
+                    if (item.getAttribute('onclick').includes(targetFile)) {
+                        item.click();
+                        return;
+                    }
+                }
+            }
+            
+            // Fallback: Click the first item if exists
+            const firstItem = document.querySelector('#dicomTab .series-item');
+            if (firstItem) firstItem.click();
+        });
+
         // Handle Window resize
         window.addEventListener('resize', function() {
             cornerstone.resize(element);

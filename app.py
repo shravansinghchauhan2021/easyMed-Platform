@@ -1276,13 +1276,31 @@ def imaging_viewer(patient_id):
         
     conn = get_db_connection()
     patient = db_execute(conn, 'SELECT * FROM patients WHERE id = ?', (patient_id,)).fetchone()
+    if not patient:
+        conn.close()
+        return "Patient not found", 404
+
+    # Get existing images
     images = db_execute(conn, 'SELECT * FROM medical_images WHERE patient_id = ? ORDER BY uploaded_at DESC', (patient_id,)).fetchall()
     conn.close()
+
+    # Allow for individual file viewing (e.g. from chat)
+    view_file = request.args.get('file_path')
+    images_list = [dict(img) for img in images]
     
-    if not patient:
-        return "Patient not found", 404
-        
-    return render_template('imaging_viewer.html', patient=patient, images=images)
+    if view_file:
+        exists = any(img['file_path'] == view_file for img in images_list)
+        if not exists:
+            ext = view_file.rsplit('.', 1)[1].lower() if '.' in view_file else ''
+            modality = 'CT Scan' if ext == 'dcm' else 'EEG' if ext in ['edf', 'csv'] else 'Other'
+            images_list.insert(0, {
+                'file_path': view_file,
+                'modality': modality,
+                'sequence_type': 'Consultation Image',
+                'uploaded_at': 'Just now'
+            })
+
+    return render_template('imaging_viewer.html', patient=patient, images=images_list)
 
 
 

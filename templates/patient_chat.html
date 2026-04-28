@@ -465,6 +465,15 @@
                                         <div class="attachment-box mt-2">
                                             {% if msg['file_path'].lower().endswith(('.png', '.jpg', '.jpeg', '.gif')) %}
                                                 <img src="{{ url_for('uploaded_file', filename=msg['file_path']) }}" class="img-fluid rounded border shadow-sm medical-img-preview" style="max-height: 250px; cursor: pointer;">
+                                            {% elif msg['file_path'].lower().endswith('.dcm') %}
+                                                <div class="d-flex flex-column gap-2">
+                                                    <a href="{{ url_for('imaging_viewer', patient_id=patient['id'], file_path=msg['file_path']) }}" target="_blank" class="btn btn-sm btn-info text-white border-0 w-100 text-start py-2 fw-bold">
+                                                        <i class="fa-solid fa-microscope me-2"></i>Open in Medical Viewer
+                                                    </a>
+                                                    <a href="{{ url_for('uploaded_file', filename=msg['file_path']) }}" target="_blank" class="btn btn-sm btn-light border w-100 text-start py-2">
+                                                        <i class="fa-solid fa-download me-2"></i>Download Attachment
+                                                    </a>
+                                                </div>
                                             {% else %}
                                                 <a href="{{ url_for('uploaded_file', filename=msg['file_path']) }}" target="_blank" class="btn btn-sm btn-light border w-100 text-start py-2">
                                                     <i class="fa-solid fa-file-medical me-2"></i>Download Attachment
@@ -599,6 +608,17 @@
                 html += `<div class="attachment-box mt-2">`;
                 if (isImage) {
                     html += `<img src="${filePath}" class="img-fluid rounded border shadow-sm medical-img-preview medical-img-preview-btn" data-src="${filePath}" style="max-height: 250px; cursor: pointer;">`;
+                } else if (data.file_path.toLowerCase().endsWith('.dcm')) {
+                    html += `
+                        <div class="d-flex flex-column gap-2">
+                            <a href="/imaging_viewer/${patientId}?file_path=${data.file_path}" target="_blank" class="btn btn-sm btn-info text-white border-0 w-100 text-start py-2 fw-bold">
+                                <i class="fa-solid fa-microscope me-2"></i>Open in Medical Viewer
+                            </a>
+                            <a href="${filePath}" target="_blank" class="btn btn-sm btn-light border w-100 text-start py-2">
+                                <i class="fa-solid fa-download me-2"></i>Download Attachment
+                            </a>
+                        </div>
+                    `;
                 } else {
                     html += `
                         <a href="${filePath}" target="_blank" class="btn btn-sm btn-light border w-100 text-start py-2">

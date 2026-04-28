@@ -265,6 +265,22 @@ app.secret_key = 'super_secret_medical_key_for_dev'
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
+# --- Initialize Neural Heartbeat (Keep-Alive) ---
+def start_heartbeat():
+    if os.environ.get('RENDER'):
+        # Try to find the URL automatically
+        url = os.environ.get('RENDER_EXTERNAL_URL')
+        if not url and os.environ.get('RENDER_EXTERNAL_HOSTNAME'):
+            url = f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME')}"
+            
+        if url:
+            ka_thread = threading.Thread(target=keep_alive, args=(url,), daemon=True)
+            ka_thread.start()
+        else:
+            print(">>> [HEARTBEAT] Warning: RENDER_EXTERNAL_URL not set. Heartbeat skipped.", flush=True)
+
+start_heartbeat()
+
 @app.context_processor
 def inject_global_notifications():
     if 'user_id' in session:
@@ -1353,25 +1369,22 @@ def case_history():
     return render_template('case_history.html', patients=patients, unread_count=unread_count, notifications=notifications)
 
 # --- Self-Ping / Keep-Alive System ---
-def keep_alive():
-    """Pings the app every 14 minutes to prevent Render sleep mode"""
-    # Wait for app to boot
-    time.sleep(30)
+def keep_alive(url):
+    """Pings the app every 10 minutes to prevent Render sleep mode"""
+    # Wait longer for app to fully boot on Render's slow free tier
+    time.sleep(60)
     
-    url = os.environ.get('RENDER_EXTERNAL_URL')
-    if not url:
-        print("[KEEP-ALIVE] RENDER_EXTERNAL_URL not found. Skipping self-ping.")
-        return
-
-    print(f"[KEEP-ALIVE] Starting background pinger for {url}")
+    print(f">>> [HEARTBEAT] Starting background pinger for {url}", flush=True)
     while True:
         try:
-            # We use a 14-minute interval (Render sleeps at 15m)
-            time.sleep(14 * 60)
-            requests.get(url, timeout=10)
-            print(f"[KEEP-ALIVE] Heartbeat sent at {datetime.now()}")
+            # Safer 10-minute interval (Render sleeps at 15m)
+            time.sleep(10 * 60)
+            # Use /ping endpoint to avoid heavy load
+            ping_url = f"{url.rstrip('/')}/ping"
+            requests.get(ping_url, timeout=15)
+            print(f">>> [HEARTBEAT] Pulse sent at {datetime.now()}", flush=True)
         except Exception as e:
-            print(f"[KEEP-ALIVE] Ping failed: {e}")
+            print(f">>> [HEARTBEAT] Pulse failed: {e}", flush=True)
 
 @app.route('/ping')
 def ping():
@@ -1959,9 +1972,4 @@ def get_specialists(specialty):
     return jsonify({'success': True, 'doctors': doctor_list})
 
 if __name__ == '__main__':
-    # Start Keep-Alive thread
-    if os.environ.get('RENDER_EXTERNAL_URL'):
-        ka_thread = threading.Thread(target=keep_alive, daemon=True)
-        ka_thread.start()
-        
     socketio.run(app, host='0.0.0.0', port=5000, debug=False)

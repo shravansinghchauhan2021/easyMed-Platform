@@ -10,16 +10,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='dashboard_enhancements.css') }}">
     <script src="{{ url_for('static', filename='sidebar.js') }}" defer></script>
-    <script>
-        function toggleMobileMenu() {
-            const sidebar = document.querySelector('.sidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            if(sidebar && overlay) {
-                sidebar.classList.toggle('active');
-                overlay.classList.toggle('active');
-            }
-        }
-    </script>
+
 </head>
 <body>
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -93,7 +84,7 @@
     <!-- MAIN CONTENT -->
     <div class="main-wrapper">
         <header class="top-header">
-            <button class="menu-toggle d-lg-none me-3" onclick="toggleMobileMenu()">
+            <button class="menu-toggle d-lg-none me-3">
                 <i class="fa-solid fa-bars"></i>
             </button>
             <div class="header-ecg"></div>

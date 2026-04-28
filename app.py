@@ -265,6 +265,24 @@ app.secret_key = 'super_secret_medical_key_for_dev'
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
+# --- Self-Ping / Keep-Alive System ---
+def keep_alive(url):
+    """Pings the app every 10 minutes to prevent Render sleep mode"""
+    # Wait longer for app to fully boot on Render's slow free tier
+    time.sleep(60)
+    
+    print(f">>> [HEARTBEAT] Starting background pinger for {url}", flush=True)
+    while True:
+        try:
+            # Safer 10-minute interval (Render sleeps at 15m)
+            time.sleep(10 * 60)
+            # Use /ping endpoint to avoid heavy load
+            ping_url = f"{url.rstrip('/')}/ping"
+            requests.get(ping_url, timeout=15)
+            print(f">>> [HEARTBEAT] Pulse sent at {datetime.now()}", flush=True)
+        except Exception as e:
+            print(f">>> [HEARTBEAT] Pulse failed: {e}", flush=True)
+
 # --- Initialize Neural Heartbeat (Keep-Alive) ---
 def start_heartbeat():
     if os.environ.get('RENDER'):
@@ -1367,24 +1385,7 @@ def case_history():
     
     return render_template('case_history.html', patients=patients, unread_count=unread_count, notifications=notifications)
 
-# --- Self-Ping / Keep-Alive System ---
-def keep_alive(url):
-    """Pings the app every 10 minutes to prevent Render sleep mode"""
-    # Wait longer for app to fully boot on Render's slow free tier
-    time.sleep(60)
-    
-    print(f">>> [HEARTBEAT] Starting background pinger for {url}", flush=True)
-    while True:
-        try:
-            # Safer 10-minute interval (Render sleeps at 15m)
-            time.sleep(10 * 60)
-            # Use /ping endpoint to avoid heavy load
-            ping_url = f"{url.rstrip('/')}/ping"
-            requests.get(ping_url, timeout=15)
-            print(f">>> [HEARTBEAT] Pulse sent at {datetime.now()}", flush=True)
-        except Exception as e:
-            print(f">>> [HEARTBEAT] Pulse failed: {e}", flush=True)
-
+# --- Chatbot / Query Handling ---
 @app.route('/ping')
 def ping():
     return "PONG", 200

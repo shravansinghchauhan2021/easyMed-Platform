@@ -109,17 +109,29 @@
                 <div class="row">
                     <div class="col-md-2">
                         <div class="image-list">
-                            <h6 class="text-info fw-bold border-bottom border-secondary pb-2 mb-3">Available Scans</h6>
-                            {% set dicom_files = images | selectattr('modality', '!=', 'EEG') | list %}
+                            {% set dicom_files = images | selectattr('sequence_type', '!=', 'Consultation Image') | selectattr('modality', '!=', 'EEG') | list %}
+                            {% set chat_files = images | selectattr('sequence_type', '==', 'Consultation Image') | list %}
+                            
+                            {% if chat_files %}
+                                <h6 class="text-warning small fw-bold mt-3 mb-2 opacity-75">Consultation Attachments</h6>
+                                {% for img in chat_files %}
+                                    <div class="series-item" onclick="loadDicom('{{ url_for('serve_medical_file', filename=img['file_path']) }}', this)">
+                                        <div class="fw-bold small text-white"><i class="fa-solid fa-comments me-2 text-warning"></i>Chat File</div>
+                                        <div class="text-muted" style="font-size: 0.7rem;">{{ img['file_path'] }}</div>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+
+                            <h6 class="text-info small fw-bold mt-3 mb-2 opacity-75">Diagnostic Scans</h6>
                             {% if dicom_files %}
                                 {% for img in dicom_files %}
-                                    <div class="series-item" onclick="loadDicom('{{ url_for('imaging_file', filename=img['file_path']) }}', this)">
+                                    <div class="series-item" onclick="loadDicom('{{ url_for('serve_medical_file', filename=img['file_path']) }}', this)">
                                         <div class="fw-bold small text-white"><i class="fa-solid fa-file-medical me-2"></i>{{ img['modality'] }}</div>
                                         <div class="text-muted" style="font-size: 0.75rem;">Seq: {{ img['sequence_type'] }}<br>{{ img['uploaded_at'] }}</div>
                                     </div>
                                 {% endfor %}
-                            {% else %}
-                                <p class="text-muted small p-2">No CT/MRI scans uploaded.</p>
+                            {% else and not chat_files %}
+                                <p class="text-muted small p-2">No scans available.</p>
                             {% endif %}
                         </div>
                     </div>
@@ -199,7 +211,7 @@
                             {% set eeg_files = images | selectattr('modality', '==', 'EEG') | list %}
                             {% if eeg_files %}
                                 {% for img in eeg_files %}
-                                    <div class="series-item" onclick="loadEEG('{{ url_for('imaging_file', filename=img['file_path']) }}', this)">
+                                    <div class="series-item" onclick="loadEEG('{{ url_for('serve_medical_file', filename=img['file_path']) }}', this)">
                                         <div class="fw-bold small text-white"><i class="fa-solid fa-wave-square me-2"></i>{{ img['modality'] }}</div>
                                         <div class="text-muted" style="font-size: 0.75rem;">{{ img['uploaded_at'] }}</div>
                                     </div>

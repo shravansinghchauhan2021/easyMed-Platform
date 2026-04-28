@@ -1245,17 +1245,23 @@ def delete_patient(patient_id):
         return redirect(url_for('rural_dashboard'))
     return redirect(url_for('specialist_dashboard'))
 
-@app.route('/imaging_file/<filename>')
-def imaging_file(filename):
+@app.route('/medical_file/<filename>')
+def serve_medical_file(filename):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    file_path = os.path.join(app.config['IMAGING_FOLDER'], filename)
-    if not os.path.exists(file_path):
-        print(f">>> [DICOM ALERT] File missing from disk: {filename}. It may have been deleted by a server redeploy.", flush=True)
-        return "File not found on server. It may have been deleted by a redeploy.", 404
+    # Check imaging folder first
+    imaging_path = os.path.join(app.config['IMAGING_FOLDER'], filename)
+    if os.path.exists(imaging_path):
+        return send_from_directory(app.config['IMAGING_FOLDER'], filename)
         
-    return send_from_directory(app.config['IMAGING_FOLDER'], filename)
+    # Fallback to main uploads folder (where chat files live)
+    upload_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    if os.path.exists(upload_path):
+        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+            
+    print(f">>> [DICOM ALERT] File missing from both medical and chat folders: {filename}", flush=True)
+    return "Medical file not found. It may have been cleaned up by a server redeploy.", 404
 
 @app.route('/api/patient_images/<int:patient_id>')
 def api_patient_images(patient_id):

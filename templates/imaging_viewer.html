@@ -130,7 +130,7 @@
                                         <div class="text-muted" style="font-size: 0.75rem;">Seq: {{ img['sequence_type'] }}<br>{{ img['uploaded_at'] }}</div>
                                     </div>
                                 {% endfor %}
-                            {% else and not chat_files %}
+                            {% elif not chat_files %}
                                 <p class="text-muted small p-2">No scans available.</p>
                             {% endif %}
                         </div>

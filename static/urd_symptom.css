@@ -187,6 +187,15 @@
     color: var(--primary);
 }
 
+.checkbox-item.none-option {
+    background: #f1f5f9;
+    border-style: dashed;
+}
+
+.checkbox-item.none-option:hover {
+    background: #e2e8f0;
+}
+
 @media (max-width: 768px) {
     .wizard-card {
         padding: 20px;

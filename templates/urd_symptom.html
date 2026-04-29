@@ -66,6 +66,9 @@
             </div>
 
             <div class="wizard-card">
+                <div id="wizardError" class="alert alert-danger d-none mx-3 mt-3" style="font-size: 0.9rem;">
+                    Please select at least one option.
+                </div>
                 <!-- Step 1: Initial Symptom Selection -->
                 <div class="wizard-step active" id="step1">
                     <h3 class="wizard-title">What symptoms are you experiencing?</h3>
@@ -108,6 +111,10 @@
                         <label class="checkbox-item">
                             <input type="checkbox" name="symptomLeft" value="Pelvic/perineal pain (male)"> Pelvic/perineal pain (male)
                         </label>
+                        <hr class="my-2">
+                        <label class="checkbox-item none-option">
+                            <input type="checkbox" name="symptomLeftNone" value="none" onchange="toggleNone('symptomLeft')"> <strong>None of the above</strong>
+                        </label>
                     </div>
                     <button class="btn btn-primary btn-next" onclick="evaluateStep2Left()">Continue</button>
                 </div>
@@ -131,6 +138,10 @@
                         <label class="checkbox-item">
                             <input type="checkbox" name="symptomRight" value="Tender prostate (male)"> Tender prostate (male)
                         </label>
+                        <hr class="my-2">
+                        <label class="checkbox-item none-option">
+                            <input type="checkbox" name="symptomRightNone" value="none" onchange="toggleNone('symptomRight')"> <strong>None of the above</strong>
+                        </label>
                     </div>
                     <button class="btn btn-primary btn-next" onclick="evaluateStep2Right()">Continue</button>
                 </div>
@@ -153,6 +164,10 @@
                         </label>
                         <label class="checkbox-item">
                             <input type="checkbox" name="redflag" value="Reduced urine output"> Reduced urine output
+                        </label>
+                        <hr class="my-2">
+                        <label class="checkbox-item none-option">
+                            <input type="checkbox" name="redflagNone" value="none" onchange="toggleNone('redflag')"> <strong>None of the above</strong>
                         </label>
                     </div>
                     <button class="btn btn-danger btn-next" onclick="evaluateRedFlags()">Check for Danger Signs</button>

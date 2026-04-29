@@ -5,11 +5,36 @@
 let currentStep = 1;
 
 function showStep(stepId) {
+    document.getElementById('wizardError').classList.add('d-none'); // Clear error on step change
     document.querySelectorAll('.wizard-step').forEach(step => {
         step.classList.remove('active');
     });
     document.getElementById(stepId).classList.add('active');
     updateProgress();
+}
+
+function toggleNone(groupName) {
+    const noneCheckbox = document.querySelector(`input[name="${groupName}None"]`);
+    const otherCheckboxes = document.querySelectorAll(`input[name="${groupName}"]`);
+    
+    if (noneCheckbox.checked) {
+        otherCheckboxes.forEach(cb => cb.checked = false);
+    }
+}
+
+// Added mutual exclusivity when other boxes are checked
+document.addEventListener('change', (e) => {
+    if (e.target.type === 'checkbox' && !e.target.name.endsWith('None')) {
+        const groupName = e.target.name;
+        const noneCheckbox = document.querySelector(`input[name="${groupName}None"]`);
+        if (noneCheckbox && e.target.checked) {
+            noneCheckbox.checked = false;
+        }
+    }
+});
+
+function showError() {
+    document.getElementById('wizardError').classList.remove('d-none');
 }
 
 function updateProgress() {
@@ -42,6 +67,13 @@ function handleStep2(isYes) {
 
 function evaluateStep2Left() {
     const selected = document.querySelectorAll('input[name="symptomLeft"]:checked');
+    const noneSelected = document.querySelector('input[name="symptomLeftNone"]').checked;
+    
+    if (!noneSelected && selected.length === 0) {
+        showError();
+        return;
+    }
+
     if (selected.length > 0) {
         showResult('Most likely vaginitis/prostatitis. Please consult a doctor.', 'consult');
     } else {
@@ -51,6 +83,13 @@ function evaluateStep2Left() {
 
 function evaluateStep2Right() {
     const selected = document.querySelectorAll('input[name="symptomRight"]:checked');
+    const noneSelected = document.querySelector('input[name="symptomRightNone"]').checked;
+
+    if (!noneSelected && selected.length === 0) {
+        showError();
+        return;
+    }
+
     if (selected.length > 0) {
         showResult('Most likely vaginitis/prostatitis. Please consult a doctor.', 'consult');
     } else {
@@ -61,6 +100,13 @@ function evaluateStep2Right() {
 
 function evaluateRedFlags() {
     const selected = document.querySelectorAll('input[name="redflag"]:checked');
+    const noneSelected = document.querySelector('input[name="redflagNone"]').checked;
+
+    if (!noneSelected && selected.length === 0) {
+        showError();
+        return;
+    }
+
     if (selected.length > 0) {
         showResult('Refer to hospital immediately.', 'emergency');
     } else {

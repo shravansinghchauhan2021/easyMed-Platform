@@ -839,6 +839,12 @@ def patient_dashboard():
     
     return render_template('patient_dashboard.html', patients=patients, notifications=notifications, unread_count=unread_count)
 
+@app.route('/urd-symptom')
+def urd_symptom():
+    if 'user_id' not in session or session.get('profession') != 'Patient':
+        return redirect(url_for('login'))
+    return render_template('urd_symptom.html')
+
 @app.route('/patient_case/<int:patient_id>')
 def patient_case_view(patient_id):
     if 'user_id' not in session or session.get('profession') != 'Patient':

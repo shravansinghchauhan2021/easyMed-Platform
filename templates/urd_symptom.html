@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Symptom Assistant Wizard</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='urd_symptom.css') }}">
+</head>
+<body class="bg-light">
+    <div class="hospital-pattern"></div>
+
+    <!-- Sidebar Layout -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <i class="fa-solid fa-house-medical"></i> Patient Portal
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a href="{{ url_for('patient_dashboard') }}" class="nav-link">
+                    <i class="fa-solid fa-house-user"></i> My Cases
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('urd_symptom') }}" class="nav-link active">
+                    <i class="fa-solid fa-clipboard-check"></i> URD Symptom
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('ai_assistant') }}" class="nav-link">
+                    <i class="fa-solid fa-robot"></i> AI Assistant
+                </a>
+            </li>
+        </ul>
+        <div class="sidebar-footer">
+            <a href="{{ url_for('logout') }}" class="logout-link">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-wrapper">
+        <header class="top-header">
+            <div class="header-ecg"></div>
+            <div class="d-flex align-items-center gap-3 position-relative z-1">
+                <h4 class="m-0 fw-bold text-white"><i class="fa-solid fa-clipboard-check me-2"></i>Symptom Assistant</h4>
+            </div>
+            <div class="header-user-info text-white">
+                <i class="fa-solid fa-user me-2"></i> {{ session['username'] }}
+            </div>
+        </header>
+
+        <div class="container wizard-container">
+            <div class="progress-stepper" id="progressStepper">
+                <div class="progress-dot active"></div>
+                <div class="progress-dot"></div>
+                <div class="progress-dot"></div>
+                <div class="progress-dot"></div>
+            </div>
+
+            <div class="wizard-card">
+                <!-- Step 1: Initial Symptom Selection -->
+                <div class="wizard-step active" id="step1">
+                    <h3 class="wizard-title">What symptoms are you experiencing?</h3>
+                    <div class="options-grid">
+                        <button class="btn-option" onclick="selectInitialSymptom('Urinary')">
+                            Urinary symptoms <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                        <button class="btn-option" onclick="selectInitialSymptom('Respiratory')">
+                            Respiratory symptoms <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                        <button class="btn-option" onclick="selectInitialSymptom('Diarrheal')">
+                            Diarrheal symptoms <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Urinary Specific -->
+                <div class="wizard-step" id="step2">
+                    <h3 class="wizard-title">Do you have urinary symptoms such as dysuria, frequency, or urgency?</h3>
+                    <div class="options-grid">
+                        <button class="btn-option" onclick="handleStep2(true)">
+                            Yes <i class="fa-solid fa-check"></i>
+                        </button>
+                        <button class="btn-option" onclick="handleStep2(false)">
+                            No <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 2 Left Branch: Multi-select -->
+                <div class="wizard-step" id="step2Left">
+                    <h3 class="wizard-title">Do you have any of the following symptoms?</h3>
+                    <div class="checkbox-group">
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="symptomLeft" value="Vaginal discharge (female)"> Vaginal discharge (female)
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="symptomLeft" value="Vaginal irritation (female)"> Vaginal irritation (female)
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="symptomLeft" value="Pelvic/perineal pain (male)"> Pelvic/perineal pain (male)
+                        </label>
+                    </div>
+                    <button class="btn btn-primary btn-next" onclick="evaluateStep2Left()">Continue</button>
+                </div>
+
+                <!-- Step 2 Right Branch: Multi-select -->
+                <div class="wizard-step" id="step2Right">
+                    <h3 class="wizard-title">Do you have any of the following symptoms?</h3>
+                    <div class="checkbox-group">
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="symptomRight" value="Vaginal discharge (female)"> Vaginal discharge (female)
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="symptomRight" value="Vaginal irritation (female)"> Vaginal irritation (female)
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="symptomRight" value="Pelvic/perineal pain"> Pelvic/perineal pain
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="symptomRight" value="Dysuria"> Dysuria
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="symptomRight" value="Tender prostate (male)"> Tender prostate (male)
+                        </label>
+                    </div>
+                    <button class="btn btn-primary btn-next" onclick="evaluateStep2Right()">Continue</button>
+                </div>
+
+                <!-- Step 3: Red Flags -->
+                <div class="wizard-step" id="step3">
+                    <h3 class="wizard-title text-danger">Do you have any of the following red flag symptoms?</h3>
+                    <div class="checkbox-group">
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="redflag" value="Rapid breathing (RR > 30/min)"> Rapid breathing (RR > 30/min)
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="redflag" value="Oxygen saturation < 90%"> Oxygen saturation < 90%
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="redflag" value="BP < 90/60 mmHg"> BP < 90/60 mmHg
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="redflag" value="Altered mental status"> Altered mental status
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="redflag" value="Reduced urine output"> Reduced urine output
+                        </label>
+                    </div>
+                    <button class="btn btn-danger btn-next" onclick="evaluateRedFlags()">Check for Danger Signs</button>
+                </div>
+
+                <!-- Step 4: Fever -->
+                <div class="wizard-step" id="step4">
+                    <h3 class="wizard-title">Do you have fever?</h3>
+                    <div class="options-grid">
+                        <button class="btn-option" onclick="evaluateFinal(true)">
+                            Yes <i class="fa-solid fa-thermometer-half"></i>
+                        </button>
+                        <button class="btn-option" onclick="evaluateFinal(false)">
+                            No <i class="fa-solid fa-check"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Final Results -->
+                <div class="wizard-step" id="resultStep">
+                    <div id="resultContent"></div>
+                    <div class="text-center">
+                        <a href="{{ url_for('urd_symptom') }}" class="back-link">
+                            <i class="fa-solid fa-rotate-left"></i> Restart Assessment
+                        </a>
+                        <br>
+                        <a href="{{ url_for('patient_dashboard') }}" class="back-link">
+                            <i class="fa-solid fa-house"></i> Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='urd_symptom.js') }}"></script>
+</body>
+</html>

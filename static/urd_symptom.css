@@ -1,0 +1,200 @@
+/* URD Symptom Wizard Styles */
+:root {
+    --primary: #0ea5e9;
+    --primary-hover: #0284c7;
+    --bg-light: #f8fafc;
+    --text-dark: #1e293b;
+    --text-muted: #64748b;
+    --success: #10b981;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+}
+
+.wizard-container {
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 20px;
+}
+
+.wizard-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+    padding: 30px;
+    transition: all 0.3s ease;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.wizard-step {
+    display: none;
+    animation: fadeIn 0.5s ease;
+}
+
+.wizard-step.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.wizard-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.options-grid {
+    display: grid;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.btn-option {
+    padding: 15px;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    background: white;
+    color: var(--text-dark);
+    font-weight: 600;
+    text-align: left;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.btn-option:hover {
+    border-color: var(--primary);
+    background: #f0f9ff;
+    transform: translateX(5px);
+}
+
+.btn-option i {
+    color: var(--primary);
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.btn-option:hover i {
+    opacity: 1;
+}
+
+/* Checkbox specific styles */
+.checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.checkbox-item:hover {
+    background: #f8fafc;
+}
+
+.checkbox-item input {
+    margin-right: 12px;
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+}
+
+/* Result Box */
+.result-box {
+    padding: 20px;
+    border-radius: 12px;
+    margin-top: 20px;
+    text-align: center;
+}
+
+.result-uncomplicated {
+    background: #ecfdf5;
+    border: 1px solid #10b981;
+    color: #065f46;
+}
+
+.result-complicated {
+    background: #fff7ed;
+    border: 1px solid #f97316;
+    color: #9a3412;
+}
+
+.result-emergency {
+    background: #fef2f2;
+    border: 1px solid #ef4444;
+    color: #991b1b;
+}
+
+.result-consult {
+    background: #eff6ff;
+    border: 1px solid #3b82f6;
+    color: #1e40af;
+}
+
+.progress-stepper {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 30px;
+}
+
+.progress-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    transition: background 0.3s;
+}
+
+.progress-dot.active {
+    background: var(--primary);
+    width: 25px;
+    border-radius: 5px;
+}
+
+.btn-next {
+    margin-top: 25px;
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    font-weight: 700;
+}
+
+.back-link {
+    display: inline-block;
+    margin-top: 20px;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.back-link:hover {
+    color: var(--primary);
+}
+
+@media (max-width: 768px) {
+    .wizard-card {
+        padding: 20px;
+        border-radius: 0;
+        box-shadow: none;
+    }
+    .wizard-container {
+        padding: 0;
+        margin: 0;
+    }
+}

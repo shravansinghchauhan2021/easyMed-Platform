@@ -474,16 +474,6 @@ def create_notification(user_id, message, link="#", patient_id=None, conn=None):
         cur = db_execute(conn, insert_sql, params)
         notif_id = cur.lastrowid
     
-    # Emit real-time update
-    try:
-        socketio.emit('new_notification', {
-            'id': notif_id,
-            'message': message,
-            'link': link,
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        }, room=f"user_{user_id}")
-    except:
-        pass # Handle cases where we are outside of request context
     
     if close_conn:
         conn.commit()

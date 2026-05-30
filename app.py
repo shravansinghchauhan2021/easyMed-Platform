@@ -295,7 +295,8 @@ def seed_demo_data(conn):
     demo_users = [
         ('demo_rural', 'Rural Doctor', '555-010-0001'),
         ('demo_specialist', 'Neurologist', '555-010-0002'),
-        ('demo_patient', 'Patient', '555-010-0003')
+        ('demo_patient', 'Patient', '555-010-0003'),
+        ('demo_cdss', 'Clinical Decision Support', '555-010-0004')
     ]
     
     user_ids = {}
@@ -701,7 +702,8 @@ def login():
         demo_accounts = {
             'demo_rural': ('Rural Doctor', 'demo_password_123', '555-010-0001'),
             'demo_specialist': ('Neurologist', 'demo_password_123', '555-010-0002'),
-            'demo_patient': ('Patient', 'demo_password_123', '555-010-0003')
+            'demo_patient': ('Patient', 'demo_password_123', '555-010-0003'),
+            'demo_cdss': ('Clinical Decision Support', 'demo_password_123', '555-010-0004')
         }
         
         if username in demo_accounts:
@@ -747,6 +749,8 @@ def login():
                 return redirect(url_for('specialist_dashboard'))
             elif user['profession'] == 'Patient':
                 return redirect(url_for('patient_dashboard'))
+            elif user['profession'] == 'Clinical Decision Support':
+                return redirect(url_for('cdss_dashboard'))
             else:
                 return redirect(url_for('dashboard')) # fallback
         else:
@@ -759,6 +763,18 @@ def dashboard():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     return f"Welcome {session['username']}! <br><a href='/logout'>Logout</a>"
+
+@app.route('/cdss-dashboard')
+def cdss_dashboard():
+    if 'user_id' not in session or session.get('profession') != 'Clinical Decision Support':
+        return redirect(url_for('login'))
+    return render_template('cdss_dashboard.html')
+
+@app.route('/aufi-guideline')
+def aufi_guideline():
+    if 'user_id' not in session or session.get('profession') != 'Clinical Decision Support':
+        return redirect(url_for('login'))
+    return render_template('aufi_guideline.html')
 
 @app.route('/logout')
 def logout():

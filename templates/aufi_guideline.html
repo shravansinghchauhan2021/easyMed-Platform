@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AUFI Guideline Flowchart - easyMed</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/cdss.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="dark-mode cdss-layout">
+    <header class="cdss-header">
+        <h1><i class="fa-solid fa-code-branch"></i> Clinical Guideline Flowchart</h1>
+        <div class="cdss-user-badge">
+            <a href="{{ url_for('cdss_dashboard') }}" style="color: var(--text-color); margin-right: 15px; text-decoration: none; font-weight: 500;"><i class="fa-solid fa-arrow-left"></i> Back to Dashboard</a>
+            <a href="{{ url_for('logout') }}" class="logout-link"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+        </div>
+    </header>
+
+    <main class="cdss-main">
+        <div class="wizard-card">
+            <div class="wizard-title-area">
+                <h2>Clinical decision flowchart for management of Acute Undifferentiated Febrile Illness</h2>
+            </div>
+            
+            <div class="wizard-progress-bar">
+                <div class="wizard-progress-fill" id="progress-fill"></div>
+            </div>
+
+            <div class="wizard-step-content">
+                
+                <!-- STEP 1: COMPLAINT -->
+                <div class="wizard-step active" id="step-complaint">
+                    <p class="step-question">What patient is complaining of</p>
+                    <div class="options-list">
+                        <label class="option-item">
+                            <input type="radio" name="complaint" value="fever">
+                            <span class="option-label">Fever without non localizing symptoms <=14 days</span>
+                        </label>
+                        <label class="option-item">
+                            <input type="radio" name="complaint" value="urinary">
+                            <span class="option-label">Urinary Symptoms</span>
+                        </label>
+                        <label class="option-item">
+                            <input type="radio" name="complaint" value="respiratory">
+                            <span class="option-label">Respiratory symptoms</span>
+                        </label>
+                        <label class="option-item">
+                            <input type="radio" name="complaint" value="diarrheal">
+                            <span class="option-label">Diarrheal Symptoms</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- STEP 2: UNIMPLEMENTED -->
+                <div class="wizard-step" id="step-unimplemented">
+                    <div class="result-message-box alert-box">
+                        <h4>Workflow Status</h4>
+                        <p>Workflow not implemented yet.</p>
+                    </div>
+                </div>
+
+                <!-- STEP 3: RED FLAGS -->
+                <div class="wizard-step" id="step-redflags">
+                    <p class="step-question">Ask: Does the patient have any red flag sign</p>
+                    <div class="options-list">
+                        <label class="option-item">
+                            <input type="checkbox" name="redflags" value="hyperpyrexia">
+                            <span class="option-label">Hyperpyrexia (&ge;106.7&deg;F), Hypothermia (&le;95&deg;F)</span>
+                        </label>
+                        <label class="option-item">
+                            <input type="checkbox" name="redflags" value="prostration">
+                            <span class="option-label">Prostration</span>
+                        </label>
+                        <label class="option-item">
+                            <input type="checkbox" name="redflags" value="sob">
+                            <span class="option-label">Shortness of breath</span>
+                        </label>
+                        <label class="option-item">
+                            <input type="checkbox" name="redflags" value="oxygen">
+                            <span class="option-label">Arterial oxygen saturation<90%</span>
+                        </label>
+                        <label class="option-item">
+                            <input type="checkbox" name="redflags" value="bp">
+                            <span class="option-label">BP<90/<60 mm Hg</span>
+                        </label>
+                        <label class="option-item">
+                            <input type="checkbox" name="redflags" value="seizure">
+                            <span class="option-label">Seizure, altered sensorium, neck stiffness</span>
+                        </label>
+                        <label class="option-item">
+                            <input type="checkbox" name="redflags" value="vomiting">
+                            <span class="option-label">Repeated vomiting or inability to tolerate oral intake</span>
+                        </label>
+                        <label class="option-item">
+                            <input type="checkbox" name="redflags" value="jaundice">
+                            <span class="option-label">Jaundice, Bleeding</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- STEP 4: SUGGEST ADMISSION -->
+                <div class="wizard-step" id="step-admission">
+                    <div class="result-message-box admission">
+                        <h4>suggest admission</h4>
+                        <p>Immediate hospitalization and inpatient medical care recommended.</p>
+                    </div>
+                </div>
+
+                <!-- STEP 5: FEVER DURATION -->
+                <div class="wizard-step" id="step-duration">
+                    <p class="step-question">Ask: For how many days patient is suffering from fever</p>
+                    <div class="options-list">
+                        <label class="option-item">
+                            <input type="radio" name="duration" value="day14">
+                            <span class="option-label">Day(1-4)</span>
+                        </label>
+                        <label class="option-item">
+                            <input type="radio" name="duration" value="day57">
+                            <span class="option-label">Day(5-7)</span>
+                        </label>
+                        <label class="option-item">
+                            <input type="radio" name="duration" value="day7plus">
+                            <span class="option-label">Day>7</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- STEP 6: DAY 1-4 PATH -->
+                <div class="wizard-step" id="step-day14">
+                    <div class="result-message-box info-box" style="margin-bottom: 25px; text-align: left;">
+                        <h4 style="font-size: 1.1rem; text-transform: none; margin-bottom: 5px;">Care Guideline:</h4>
+                        <p style="font-weight: 600;">Consider supportive care without antibiotics</p>
+                        <p style="font-size: 0.9rem; margin-top: 10px; opacity: 0.85;">Test for dengue NS1 ELISA+ Peripheral blood smear (+ RDT) for malaria+ CBC</p>
+                    </div>
+                    <p class="step-question">Result</p>
+                    <div class="options-list">
+                        <label class="option-item">
+                            <input type="radio" name="day14-result" value="positive">
+                            <span class="option-label">Positive</span>
+                        </label>
+                        <label class="option-item">
+                            <input type="radio" name="day14-result" value="negative">
+                            <span class="option-label">Negative</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- STEP 7: DAY 1-4 POSITIVE RESULT -->
+                <div class="wizard-step" id="step-day14-positive">
+                    <div class="result-message-box info-box">
+                        <h4>Treat accordingly dengue/ malaria based on positive result</h4>
+                        <p>Administer standard clinical protocol for laboratory-confirmed diagnosis.</p>
+                    </div>
+                </div>
+
+                <!-- STEP 8: DAY 5-7 PATH -->
+                <div class="wizard-step" id="step-day57">
+                    <p class="step-question">List of test to be done</p>
+                    <ul class="tests-list">
+                        <li>Dengue NS1 ELISA/IgM depending on duration of fever</li>
+                        <li>Peripheral blood smear (+ RDT) for malaria if not done earlier</li>
+                        <li>CBC</li>
+                        <li>IgM Chikungunya</li>
+                        <li>IgM Scrub Typhus</li>
+                        <li>IgM Leptospirosis</li>
+                        <li>Typhi dot & send blood culture for detecting typhoid</li>
+                        <li>Chest X-Ray if respiratory symptoms present</li>
+                    </ul>
+                </div>
+
+                <!-- STEP 9: DAY >7 PATH -->
+                <div class="wizard-step" id="step-day7plus">
+                    <p class="step-question">List of test to be done</p>
+                    <ul class="tests-list">
+                        <li>Peripheral blood smear (+ RDT) for malaria if not done earlier</li>
+                        <li>CBC</li>
+                        <li>IgM Scrub Typhus</li>
+                        <li>IgM Leptospirosis</li>
+                        <li>Typhi dot & send blood culture for detecting typhoid</li>
+                        <li>Chest X-Ray if respiratory symptoms present</li>
+                        <li>Urine RE/ME</li>
+                        <li>USG abdomen to look for abscess or localized collection</li>
+                    </ul>
+                </div>
+
+                <!-- STEP 10: DISEASE SUSPICION -->
+                <div class="wizard-step" id="step-suspicion">
+                    <p class="step-question">Suspecting what?</p>
+                    <div class="options-list">
+                        <label class="option-item">
+                            <input type="checkbox" name="suspicion" value="typhoid">
+                            <span class="option-label">Typhoid</span>
+                        </label>
+                        <label class="option-item">
+                            <input type="checkbox" name="suspicion" value="scrub">
+                            <span class="option-label">Scrub Typhus</span>
+                        </label>
+                        <label class="option-item">
+                            <input type="checkbox" name="suspicion" value="lepto">
+                            <span class="option-label">Leptospirosis</span>
+                        </label>
+                        <label class="option-item">
+                            <input type="checkbox" name="suspicion" value="chiki">
+                            <span class="option-label">Chikungunya</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- STEP 11: TREATMENT RECOMMENDATIONS -->
+                <div class="wizard-step" id="step-treatment">
+                    <p class="step-question">Treatment Guidance Recommendations</p>
+                    
+                    <!-- Typhoid Card -->
+                    <div class="disease-info-card typhoid" id="treatment-typhoid" style="display: none;">
+                        <h4>Suspecting Typhoid?</h4>
+                        <p class="description">fever, bradycardia, constipation/diarrhea, patient may present with toxic look</p>
+                        <p class="description">Symptoms may vary from above classical picture</p>
+                        <div class="prescription-box">
+                            If Typhoid is suspected: Azithromycin 1gm OD for 7 days, Avoid Fluroquinolones due to high resistance
+                        </div>
+                    </div>
+
+                    <!-- Scrub Typhus Card -->
+                    <div class="disease-info-card scrub" id="treatment-scrub" style="display: none;">
+                        <h4>Suspecting Scrub Typhus?</h4>
+                        <p class="description">High fever, myalgia, dry cough, lymphadenopathy</p>
+                        <p class="description">Symptoms may vary from above classical picture</p>
+                        <div class="prescription-box">
+                            If Scrub Typhus is suspected: Doxycycline 100 mg BD for 7 days
+                        </div>
+                    </div>
+
+                    <!-- Leptospirosis Card -->
+                    <div class="disease-info-card lepto" id="treatment-lepto" style="display: none;">
+                        <h4>Suspecting Leptospirosis?</h4>
+                        <p class="description">Conjunctival suffusion, yellow eyes, myalgia</p>
+                        <p class="description">Symptoms may vary from above classical picture</p>
+                        <div class="prescription-box">
+                            Doxycycline 100 mg BD for 7 days
+                        </div>
+                    </div>
+
+                    <!-- Chikungunya Card -->
+                    <div class="disease-info-card chiki" id="treatment-chiki" style="display: none;">
+                        <h4>Suspecting Chikungunya</h4>
+                        <p class="description">Sudden fever, polyarthralgia,</p>
+                        <p class="description">Early onset of rashes</p>
+                        <p class="description">Symptoms may vary from above classical picture</p>
+                        <div class="prescription-box">
+                            If Chikungunya suspected: Supportive care
+                        </div>
+                    </div>
+
+                    <!-- No Selection Fallback -->
+                    <div class="result-message-box alert-box" id="treatment-none" style="display: none;">
+                        <h4>No Suspected Condition Selected</h4>
+                        <p>Please go back and select at least one suspicion criteria, or consult clinical guidelines.</p>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="wizard-actions">
+                <button type="button" class="wizard-btn wizard-btn-prev" id="prev-btn" onclick="goPrev()">Previous</button>
+                <button type="button" class="wizard-btn wizard-btn-next" id="next-btn" onclick="goNext()">Next</button>
+            </div>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='js/cdss.js') }}"></script>
+</body>
+</html>

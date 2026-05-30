@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CDSS Dashboard - easyMed</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/cdss.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="dark-mode cdss-layout">
+    <header class="cdss-header">
+        <h1><i class="fa-solid fa-user-doctor"></i> easyMed CDSS</h1>
+        <div class="cdss-user-badge">
+            <span>Logged in as: <strong>{{ session.get('username', 'Decision Support Analyst') }}</strong> (Clinical Decision Support)</span>
+            <a href="{{ url_for('logout') }}" class="logout-link"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+        </div>
+    </header>
+
+    <main class="cdss-main">
+        <div class="dashboard-center">
+            <div class="cdss-title-section">
+                <h2>Clinical Decision Support System</h2>
+                <p>Evidence-based decision logs and diagnostic workflows for clinical professionals.</p>
+            </div>
+
+            <div class="cdss-grid">
+                <!-- Card 1: Knowledge Based -->
+                <div class="cdss-action-card" style="opacity: 0.8; cursor: default;">
+                    <i class="fa-solid fa-book-medical card-icon"></i>
+                    <h3>Knowledge Based</h3>
+                    <p>Access clinical medical resources, guidelines, and diagnostic dictionaries.</p>
+                </div>
+
+                <!-- Card 2: Guideline -->
+                <a href="{{ url_for('aufi_guideline') }}" class="cdss-action-card">
+                    <i class="fa-solid fa-circle-nodes card-icon"></i>
+                    <h3>Guideline</h3>
+                    <p>Launch the decision flowchart for managing Acute Undifferentiated Febrile Illness (AUFI).</p>
+                </a>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

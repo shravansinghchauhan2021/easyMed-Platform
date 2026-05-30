@@ -76,6 +76,9 @@
         .demo-btn-patient {
             border-left: 4px solid var(--success-color);
         }
+        .demo-btn-cdss {
+            border-left: 4px solid #f59e0b;
+        }
         .demo-btn span {
             display: flex;
             align-items: center;
@@ -153,6 +156,7 @@
                         <option value="Oncologist">Oncologist</option>
                         <option value="Nephrologist">Nephrologist</option>
                         <option value="Pulmonologist">Pulmonologist</option>
+                        <option value="Clinical Decision Support">Clinical Decision Support</option>
                     </select>
                 </div>
 
@@ -189,6 +193,13 @@
                     <span>
                         <i class="fa-solid fa-user-injured role-icon text-success"></i>
                         Demo Patient
+                    </span>
+                    <i class="fa-solid fa-chevron-right" style="opacity: 0.6; font-size: 0.75rem;"></i>
+                </button>
+                <button type="button" class="demo-btn demo-btn-cdss" onclick="loginAsDemo('demo_cdss', 'Clinical Decision Support', 'demo_password_123')">
+                    <span>
+                        <i class="fa-solid fa-laptop-medical role-icon text-warning"></i>
+                        Demo Clinical Decision Support
                     </span>
                     <i class="fa-solid fa-chevron-right" style="opacity: 0.6; font-size: 0.75rem;"></i>
                 </button>

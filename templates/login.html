@@ -14,6 +14,78 @@
             align-items: center;
             justify-content: center;
         }
+        .demo-section-divider {
+            margin: 25px 0 15px 0;
+            display: flex;
+            align-items: center;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .demo-section-divider::before,
+        .demo-section-divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .demo-section-divider:not(:empty)::before {
+            margin-right: .5em;
+        }
+        .demo-section-divider:not(:empty)::after {
+            margin-left: .5em;
+        }
+        .demo-btn-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .demo-btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-decoration: none;
+            width: 100%;
+        }
+        .demo-btn:hover {
+            transform: translateY(-2px);
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+        .demo-btn:active {
+            transform: translateY(0);
+        }
+        .demo-btn-rural {
+            border-left: 4px solid var(--primary-color);
+        }
+        .demo-btn-specialist {
+            border-left: 4px solid var(--accent-color);
+        }
+        .demo-btn-patient {
+            border-left: 4px solid var(--success-color);
+        }
+        .demo-btn span {
+            display: flex;
+            align-items: center;
+        }
+        .demo-btn i.role-icon {
+            margin-right: 10px;
+            font-size: 1.1rem;
+            width: 20px;
+            text-align: center;
+        }
     </style>
 </head>
 <body class="dark-mode">
@@ -95,6 +167,45 @@
 
                 <button type="submit" class="btn btn-primary">Login</button>
             </form>
+
+            <!-- Google Play Reviewer / Demo Access -->
+            <div class="demo-section-divider">Reviewer & Demo Access</div>
+            <div class="demo-btn-container">
+                <button type="button" class="demo-btn demo-btn-rural" onclick="loginAsDemo('demo_rural', 'Rural Doctor', 'demo_password_123')">
+                    <span>
+                        <i class="fa-solid fa-user-md role-icon text-indigo"></i>
+                        Demo Rural Doctor
+                    </span>
+                    <i class="fa-solid fa-chevron-right" style="opacity: 0.6; font-size: 0.75rem;"></i>
+                </button>
+                <button type="button" class="demo-btn demo-btn-specialist" onclick="loginAsDemo('demo_specialist', 'Neurologist', 'demo_password_123')">
+                    <span>
+                        <i class="fa-solid fa-brain role-icon text-purple"></i>
+                        Demo Neurologist
+                    </span>
+                    <i class="fa-solid fa-chevron-right" style="opacity: 0.6; font-size: 0.75rem;"></i>
+                </button>
+                <button type="button" class="demo-btn demo-btn-patient" onclick="loginAsDemo('demo_patient', 'Patient', 'demo_password_123')">
+                    <span>
+                        <i class="fa-solid fa-user-injured role-icon text-success"></i>
+                        Demo Patient
+                    </span>
+                    <i class="fa-solid fa-chevron-right" style="opacity: 0.6; font-size: 0.75rem;"></i>
+                </button>
+            </div>
+
+            <script>
+                function loginAsDemo(username, profession, password) {
+                    document.getElementById('username').value = username;
+                    document.getElementById('profession').value = profession;
+                    document.getElementById('password').value = password;
+                    // Auto-submit the login form
+                    const form = document.querySelector('form');
+                    if (form) {
+                        form.submit();
+                    }
+                }
+            </script>
 
             <div class="auth-footer">
                 <p>New User? <a href="{{ url_for('register') }}">Register here</a></p>

@@ -2,8 +2,12 @@ import os
 import requests
 import json
 import sqlite3
-import psycopg2
-from psycopg2 import extras
+try:
+    import psycopg2
+    from psycopg2 import extras
+except ImportError:
+    psycopg2 = None
+    extras = None
 from datetime import datetime
 
 # --- Step 1: Database Link Setup ---

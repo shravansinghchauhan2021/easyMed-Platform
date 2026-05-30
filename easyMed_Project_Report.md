@@ -29,7 +29,12 @@ The URD Symptom tool provides a wizard-style diagnostic workflow. It uses strict
 - Detect Red Flags (Respiratory rate, O2 saturation, BP, etc.).
 - Determine clinical outcomes: Uncomplicated UTI, Complicated UTI, or Medical Emergency.
 
-## 5. Screenshots
+## 5. Deployment & Release Status
+- **Web Platform**: Live on Render with PostgreSQL integration.
+- **Mobile Platform**: **Production Launch Successful.**
+- **Google Play Milestone**: Successfully completed the mandatory 14-day closed testing period with 12+ active testers. The production release (v1.4) was officially submitted for final review on May 14, 2026.
+
+## 6. Screenshots
 *[Instructions: Replace the following placeholders with actual screenshots from your website]*
 
 ### Homepage
@@ -45,4 +50,5 @@ The URD Symptom tool provides a wizard-style diagnostic workflow. It uses strict
 [Fig 4: Specialist view of assigned cases]
 
 ---
-*Generated on May 03, 2026*
+*Updated on May 14, 2026*
+

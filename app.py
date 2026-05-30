@@ -11,14 +11,19 @@ import threading
 from datetime import datetime
 from werkzeug.utils import secure_filename
 import traceback
-import psycopg2
-from psycopg2 import extras
 try:
-    from psycogreen.eventlet import patch_psycopg
-    patch_psycopg()
-    print(">>> [SUCCESS] Psycogreen Activated (PostgreSQL is now Green)", flush=True)
+    import psycopg2
+    from psycopg2 import extras
+    try:
+        from psycogreen.eventlet import patch_psycopg
+        patch_psycopg()
+        print(">>> [SUCCESS] Psycogreen Activated (PostgreSQL is now Green)", flush=True)
+    except ImportError:
+        print(">>> [INFO] Psycogreen not found, using standard mode.", flush=True)
 except ImportError:
-    print(">>> [INFO] Psycogreen not found, using standard mode.", flush=True)
+    psycopg2 = None
+    extras = None
+    print(">>> [INFO] psycopg2/Postgres support not available locally. Using SQLite mode.", flush=True)
 
 # --- Step 1: Database Link Setup ---
 DATABASE = 'database.db'
@@ -189,7 +194,8 @@ def init_db():
     # 3. Create Additional Tables
     for table_sql in [
         f'CREATE TABLE IF NOT EXISTS messages (id {pk_style}, patient_id INTEGER, sender_id INTEGER, message TEXT, file_path TEXT, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)',
-        f'CREATE TABLE IF NOT EXISTS notifications (id {pk_style}, user_id INTEGER, patient_id INTEGER, message TEXT, link TEXT, read_status BOOLEAN DEFAULT FALSE, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)'
+        f'CREATE TABLE IF NOT EXISTS notifications (id {pk_style}, user_id INTEGER, patient_id INTEGER, message TEXT, link TEXT, read_status BOOLEAN DEFAULT FALSE, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)',
+        f'CREATE TABLE IF NOT EXISTS medical_images (id {pk_style}, patient_id INTEGER, file_path TEXT, modality TEXT, sequence_type TEXT, uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)'
     ]:
         db_execute(conn, table_sql)
         conn.commit()
@@ -207,6 +213,8 @@ def init_db():
         ('patients', 'priority_level', 'TEXT'), ('patients', 'final_diagnosis', 'TEXT'),
         ('patients', 'final_recommendations', 'TEXT'), ('patients', 'assigned_doctor_id', 'INTEGER'),
         ('patients', 'report_file_path', 'TEXT'),
+        ('patients', 'report_file', 'TEXT'),
+        ('patients', 'specialist_id', 'INTEGER'),
         ('patients', 'specialist_type', 'TEXT'),
         ('patients', 'heart_rate', 'INTEGER'),
         ('patients', 'blood_pressure', 'TEXT'),
@@ -222,7 +230,124 @@ def init_db():
             conn.commit()
         except: pass
 
+    # Seed Demo Access Data
+    try:
+        seed_demo_data(conn)
+    except Exception as e:
+        print(f">>> [ERROR] Demo Seeding Failed: {e}", flush=True)
+        traceback.print_exc()
+
     conn.close()
+
+def seed_demo_data(conn):
+    is_postgres = DATABASE_URL is not None
+    
+    # 1. Create/ensure demo users exist
+    hashed_pw = generate_password_hash('demo_password_123')
+    demo_users = [
+        ('demo_rural', 'Rural Doctor', '555-010-0001'),
+        ('demo_specialist', 'Neurologist', '555-010-0002'),
+        ('demo_patient', 'Patient', '555-010-0003')
+    ]
+    
+    user_ids = {}
+    for username, profession, mobile in demo_users:
+        user = db_execute(conn, 'SELECT id FROM users WHERE username = ?', (username,)).fetchone()
+        if not user:
+            cur = db_execute(conn, "INSERT INTO users (username, password, profession, mobile_number, status) VALUES (?, ?, ?, ?, 'Offline')",
+                             (username, hashed_pw, profession, mobile))
+            conn.commit()
+            if is_postgres:
+                cur_id = db_execute(conn, "SELECT id FROM users WHERE username = ?", (username,)).fetchone()['id']
+            else:
+                cur_id = cur.lastrowid
+            user_ids[username] = cur_id
+        else:
+            db_execute(conn, "UPDATE users SET password = ?, profession = ?, mobile_number = ? WHERE username = ?",
+                       (hashed_pw, profession, mobile, username))
+            conn.commit()
+            user_ids[username] = user['id']
+
+    # 2. Check if we already have patients for 'demo_rural'
+    rural_doctor_id = user_ids['demo_rural']
+    specialist_id = user_ids['demo_specialist']
+    patient_user_id = user_ids['demo_patient']
+    
+    patient_count = db_get_count(conn, 'SELECT COUNT(*) FROM patients WHERE rural_doctor_id = ?', (rural_doctor_id,))
+    if patient_count == 0:
+        # Seed patients!
+        insert_sql = '''
+            INSERT INTO patients (
+                patient_name, patient_mobile, patient_user_id, age, gender, blood_pressure, heart_rate, oxygen_level, 
+                problem_description, report_file, rural_doctor_id, priority, 
+                specialist_type, specialist_id, consciousness_level, speech_condition, 
+                motor_function, headache_severity, seizure_history, tumor_details, 
+                cancer_history, kidney_function, urine_reports, skin_condition, 
+                rash_description, breathing_condition, priority_level, status, final_diagnosis, final_recommendations
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        '''
+        
+        # John Doe (Reviewed Case)
+        p1_params = (
+            'John Doe', '555-010-0003', patient_user_id, 45, 'Male', '120/80', 72, 98,
+            'Frequent headaches, visual disturbances, and mild cognitive slowing. Requested neuro consultation.', None, rural_doctor_id, 'Normal',
+            'Neurologist', specialist_id, 'Alert', 'Normal',
+            'Intact', 'Moderate', 'None', 'None',
+            'None', 'Normal', 'Clear', 'Normal',
+            'None', 'Normal', 'Normal', 'Reviewed',
+            'Mild non-specific white matter changes, likely microvascular. No acute stroke or mass effect.',
+            'Maintain regular cardiovascular health. Repeat MRI in 6-12 months if symptoms persist. Keep blood pressure monitored.'
+        )
+        
+        if is_postgres:
+            cur = db_execute(conn, insert_sql + ' RETURNING id', p1_params)
+            p1_id = cur.fetchone()['id']
+        else:
+            cur = db_execute(conn, insert_sql, p1_params)
+            p1_id = cur.lastrowid
+            
+        # Add a medical image (DICOM) for John Doe
+        db_execute(conn,
+            'INSERT INTO medical_images (patient_id, file_path, modality, sequence_type) VALUES (?, ?, ?, ?)',
+            (p1_id, '20260410101523_ID_0063_AGE_0073_CONTRAST_0_CT.dcm', 'CT Scan', 'Standard')
+        )
+        conn.commit()
+
+        # Seed chat messages for John Doe
+        db_execute(conn,
+            'INSERT INTO messages (patient_id, sender_id, message) VALUES (?, ?, ?)',
+            (p1_id, rural_doctor_id, 'Hello Dr. Specialist, I have referred John Doe to you. He has persistent headaches. I have uploaded his CT scan.')
+        )
+        db_execute(conn,
+            'INSERT INTO messages (patient_id, sender_id, message) VALUES (?, ?, ?)',
+            (p1_id, specialist_id, 'Thank you. I am reviewing the CT scan right now. It shows mild white matter changes but nothing acute. I will write the final report.')
+        )
+        conn.commit()
+
+        # Alice Johnson (Emergency Pending Case)
+        p2_params = (
+            'Alice Johnson', '555-010-9999', None, 32, 'Female', '135/85', 94, 96,
+            'Sudden onset of severe headache (thunderclap), mild weakness on the left side. Needs urgent neurological evaluation.', None, rural_doctor_id, 'Emergency',
+            'Neurologist', specialist_id, 'Somnolent', 'Slurred speech',
+            'Weak left arm drift', 'Severe', 'None', 'Suspected subarachnoid hemorrhage',
+            'None', 'Normal', 'Clear', 'Normal',
+            'None', 'Normal', 'Emergency', 'Pending', '', ''
+        )
+        
+        if is_postgres:
+            cur = db_execute(conn, insert_sql + ' RETURNING id', p2_params)
+            p2_id = cur.fetchone()['id']
+        else:
+            cur = db_execute(conn, insert_sql, p2_params)
+            p2_id = cur.lastrowid
+            
+        # Add a medical image (DICOM) for Alice Johnson
+        db_execute(conn,
+            'INSERT INTO medical_images (patient_id, file_path, modality, sequence_type) VALUES (?, ?, ?, ?)',
+            (p2_id, '20260326151600_image-00023.dcm', 'CT Scan', 'Standard')
+        )
+        conn.commit()
+
 
 
 _db_initialized = False

@@ -1,28 +1,19 @@
 # easyMed Play Store Listing Details
 
 ## App Title
-**easyMed**
+**EasyMedChoice**
 
 ## Short Description
-Multi-specialty telemedicine platform for intelligent clinical care and professional consultations.
+Track your daily wellness habits, activity goals, and personal journal.
 
 ## Full Description
-**Experience the Future of Telemedicine with easyMed.**
+EasyMedChoice is a simple personal organizer and daily activity diary designed to help you stay motivated on your wellness journey. 
 
-easyMed is a powerful, secure, and intelligent multi-specialty telemedicine platform designed to connect clinicians and patients with world-class medical expertise. Whether you are a rural doctor seeking specialist advice or a patient needing high-quality medical attention, easyMed bridges the gap with state-of-the-art technology.
+With EasyMedChoice, you can keep a private daily journal, plan your wellness habits, and log your general activities to support your active lifestyle.
 
-### Key Features:
-*   **Multi-Specialty Access**: Instant connection to specialists in Cardiology, Neurology, Dermatology, Oncology, Nephrology, and Pulmonology.
-*   **AI-Driven Risk Assessment**: Advanced analytical models provide risk assessments and condition predictions based on real-time vitals and symptoms.
-*   **Medical Imaging Viewer**: View and analyze MRI, CT, and X-ray scans directly within the app, featuring AI-powered scan analysis and heatmaps.
-*   **Secure Clinical Collaboration**: Real-time chat and document sharing for seamless coordination between healthcare providers.
-*   **Automated Case Management**: Intelligent case routing and priority detection ensure the most urgent cases get the attention they deserve.
-*   **Beautiful & Intuitive UI**: A premium, clinical-grade interface designed for maximum efficiency and ease of use.
+Key Features:
+- Activity Journal: Record your daily exercises, walks, or general activity habits.
+- Wellness Diary: A secure space to log your daily thoughts, reflections, and wellness goals.
+- Lifestyle Habits: Keep track of your schedules and organize your healthy living routines.
 
-### Security First:
-At easyMed, your medical privacy is our top priority. All data is protected with enterprise-grade encryption and transmitted over secure HTTPS connections.
-
-**Download easyMed today and join the medical revolution.**
-
----
-*Disclaimer: easyMed is an analytical support tool. Always seek the advice of a qualified healthcare provider for any medical decisions.*
+Please note: EasyMedChoice is a personal tracking journal intended for general educational and informational purposes only. It is not a medical device, does not provide medical diagnosis, clinical advice, or treatment, and should not be used as a substitute for professional medical consultation. Always consult with a qualified doctor or healthcare professional for any medical advice or decisions.

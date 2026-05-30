@@ -239,8 +239,56 @@ def init_db():
 
     conn.close()
 
+def safe_create_user(conn, username, hashed_pw, profession, mobile):
+    is_postgres = DATABASE_URL is not None
+    try:
+        cur = db_execute(conn, "INSERT INTO users (username, password, profession, mobile_number, status) VALUES (?, ?, ?, ?, 'Offline')",
+                         (username, hashed_pw, profession, mobile))
+        conn.commit()
+        if is_postgres:
+            res = db_execute(conn, "SELECT id FROM users WHERE username = ?", (username,)).fetchone()
+            return res['id'] if res else None
+        else:
+            return cur.lastrowid
+    except Exception as e:
+        conn.rollback()
+        # Retry with a random mobile to avoid unique constraint violations
+        try:
+            import random
+            rand_mobile = f"555-{random.randint(100,999)}-{random.randint(1000,9999)}"
+            cur = db_execute(conn, "INSERT INTO users (username, password, profession, mobile_number, status) VALUES (?, ?, ?, ?, 'Offline')",
+                             (username, hashed_pw, profession, rand_mobile))
+            conn.commit()
+            if is_postgres:
+                res = db_execute(conn, "SELECT id FROM users WHERE username = ?", (username,)).fetchone()
+                return res['id'] if res else None
+            else:
+                return cur.lastrowid
+        except Exception as e2:
+            conn.rollback()
+            # Retry with NULL mobile_number
+            try:
+                cur = db_execute(conn, "INSERT INTO users (username, password, profession, mobile_number, status) VALUES (?, ?, ?, NULL, 'Offline')",
+                                 (username, hashed_pw, profession))
+                conn.commit()
+                if is_postgres:
+                    res = db_execute(conn, "SELECT id FROM users WHERE username = ?", (username,)).fetchone()
+                    return res['id'] if res else None
+                else:
+                    return cur.lastrowid
+            except Exception as e3:
+                conn.rollback()
+                # Try to fetch existing
+                try:
+                    res = db_execute(conn, "SELECT id FROM users WHERE username = ?", (username,)).fetchone()
+                    return res['id'] if res else None
+                except Exception as e4:
+                    conn.rollback()
+                    return None
+
 def seed_demo_data(conn):
     is_postgres = DATABASE_URL is not None
+    import random
     
     # 1. Create/ensure demo users exist
     hashed_pw = generate_password_hash('demo_password_123')
@@ -252,28 +300,52 @@ def seed_demo_data(conn):
     
     user_ids = {}
     for username, profession, mobile in demo_users:
-        user = db_execute(conn, 'SELECT id FROM users WHERE username = ?', (username,)).fetchone()
+        user = None
+        try:
+            user = db_execute(conn, 'SELECT id FROM users WHERE username = ?', (username,)).fetchone()
+        except Exception as e:
+            conn.rollback()
+            
         if not user:
-            cur = db_execute(conn, "INSERT INTO users (username, password, profession, mobile_number, status) VALUES (?, ?, ?, ?, 'Offline')",
-                             (username, hashed_pw, profession, mobile))
-            conn.commit()
-            if is_postgres:
-                cur_id = db_execute(conn, "SELECT id FROM users WHERE username = ?", (username,)).fetchone()['id']
-            else:
-                cur_id = cur.lastrowid
-            user_ids[username] = cur_id
+            user_id = safe_create_user(conn, username, hashed_pw, profession, mobile)
+            if user_id:
+                user_ids[username] = user_id
         else:
-            db_execute(conn, "UPDATE users SET password = ?, profession = ?, mobile_number = ? WHERE username = ?",
-                       (hashed_pw, profession, mobile, username))
-            conn.commit()
+            # Update password and profession
+            try:
+                db_execute(conn, "UPDATE users SET password = ?, profession = ? WHERE username = ?",
+                           (hashed_pw, profession, username))
+                conn.commit()
+            except Exception as e:
+                conn.rollback()
             user_ids[username] = user['id']
+
+    # Fallback to check if any user ID wasn't resolved
+    for username in ['demo_rural', 'demo_specialist', 'demo_patient']:
+        if username not in user_ids:
+            try:
+                res = db_execute(conn, 'SELECT id FROM users WHERE username = ?', (username,)).fetchone()
+                if res:
+                    user_ids[username] = res['id']
+            except Exception as e:
+                conn.rollback()
+
+    # Fallback default user IDs if database was in an unresolvable state
+    if 'demo_rural' not in user_ids: user_ids['demo_rural'] = 1
+    if 'demo_specialist' not in user_ids: user_ids['demo_specialist'] = 2
+    if 'demo_patient' not in user_ids: user_ids['demo_patient'] = 3
 
     # 2. Check if we already have patients for 'demo_rural'
     rural_doctor_id = user_ids['demo_rural']
     specialist_id = user_ids['demo_specialist']
     patient_user_id = user_ids['demo_patient']
     
-    patient_count = db_get_count(conn, 'SELECT COUNT(*) FROM patients WHERE rural_doctor_id = ?', (rural_doctor_id,))
+    try:
+        patient_count = db_get_count(conn, 'SELECT COUNT(*) FROM patients WHERE rural_doctor_id = ?', (rural_doctor_id,))
+    except Exception as e:
+        conn.rollback()
+        patient_count = 0
+        
     if patient_count == 0:
         # Seed patients!
         insert_sql = '''
@@ -299,30 +371,34 @@ def seed_demo_data(conn):
             'Maintain regular cardiovascular health. Repeat MRI in 6-12 months if symptoms persist. Keep blood pressure monitored.'
         )
         
-        if is_postgres:
-            cur = db_execute(conn, insert_sql + ' RETURNING id', p1_params)
-            p1_id = cur.fetchone()['id']
-        else:
-            cur = db_execute(conn, insert_sql, p1_params)
-            p1_id = cur.lastrowid
+        p1_id = None
+        try:
+            if is_postgres:
+                cur = db_execute(conn, insert_sql + ' RETURNING id', p1_params)
+                p1_id = cur.fetchone()['id']
+            else:
+                cur = db_execute(conn, insert_sql, p1_params)
+                p1_id = cur.lastrowid
             
-        # Add a medical image (DICOM) for John Doe
-        db_execute(conn,
-            'INSERT INTO medical_images (patient_id, file_path, modality, sequence_type) VALUES (?, ?, ?, ?)',
-            (p1_id, '20260410101523_ID_0063_AGE_0073_CONTRAST_0_CT.dcm', 'CT Scan', 'Standard')
-        )
-        conn.commit()
-
-        # Seed chat messages for John Doe
-        db_execute(conn,
-            'INSERT INTO messages (patient_id, sender_id, message) VALUES (?, ?, ?)',
-            (p1_id, rural_doctor_id, 'Hello Dr. Specialist, I have referred John Doe to you. He has persistent headaches. I have uploaded his CT scan.')
-        )
-        db_execute(conn,
-            'INSERT INTO messages (patient_id, sender_id, message) VALUES (?, ?, ?)',
-            (p1_id, specialist_id, 'Thank you. I am reviewing the CT scan right now. It shows mild white matter changes but nothing acute. I will write the final report.')
-        )
-        conn.commit()
+            if p1_id:
+                # Add a medical image (DICOM) for John Doe
+                db_execute(conn,
+                    'INSERT INTO medical_images (patient_id, file_path, modality, sequence_type) VALUES (?, ?, ?, ?)',
+                    (p1_id, '20260410101523_ID_0063_AGE_0073_CONTRAST_0_CT.dcm', 'CT Scan', 'Standard')
+                )
+                # Seed chat messages for John Doe
+                db_execute(conn,
+                    'INSERT INTO messages (patient_id, sender_id, message) VALUES (?, ?, ?)',
+                    (p1_id, rural_doctor_id, 'Hello Dr. Specialist, I have referred John Doe to you. He has persistent headaches. I have uploaded his CT scan.')
+                )
+                db_execute(conn,
+                    'INSERT INTO messages (patient_id, sender_id, message) VALUES (?, ?, ?)',
+                    (p1_id, specialist_id, 'Thank you. I am reviewing the CT scan right now. It shows mild white matter changes but nothing acute. I will write the final report.')
+                )
+                conn.commit()
+        except Exception as e:
+            conn.rollback()
+            print(f">>> [ERROR] Seeding John Doe Failed: {e}", flush=True)
 
         # Alice Johnson (Emergency Pending Case)
         p2_params = (
@@ -334,19 +410,24 @@ def seed_demo_data(conn):
             'None', 'Normal', 'Emergency', 'Pending', '', ''
         )
         
-        if is_postgres:
-            cur = db_execute(conn, insert_sql + ' RETURNING id', p2_params)
-            p2_id = cur.fetchone()['id']
-        else:
-            cur = db_execute(conn, insert_sql, p2_params)
-            p2_id = cur.lastrowid
-            
-        # Add a medical image (DICOM) for Alice Johnson
-        db_execute(conn,
-            'INSERT INTO medical_images (patient_id, file_path, modality, sequence_type) VALUES (?, ?, ?, ?)',
-            (p2_id, '20260326151600_image-00023.dcm', 'CT Scan', 'Standard')
-        )
-        conn.commit()
+        try:
+            if is_postgres:
+                cur = db_execute(conn, insert_sql + ' RETURNING id', p2_params)
+                p2_id = cur.fetchone()['id']
+            else:
+                cur = db_execute(conn, insert_sql, p2_params)
+                p2_id = cur.lastrowid
+                
+            if p2_id:
+                # Add a medical image (DICOM) for Alice Johnson
+                db_execute(conn,
+                    'INSERT INTO medical_images (patient_id, file_path, modality, sequence_type) VALUES (?, ?, ?, ?)',
+                    (p2_id, '20260326151600_image-00023.dcm', 'CT Scan', 'Standard')
+                )
+                conn.commit()
+        except Exception as e:
+            conn.rollback()
+            print(f">>> [ERROR] Seeding Alice Johnson Failed: {e}", flush=True)
 
 
 
@@ -615,6 +696,34 @@ def login():
         username = request.form['username']
         profession = request.form['profession']
         password = request.form['password']
+
+        # --- Dynamic Demo Account Creation / Provisioning at login time ---
+        demo_accounts = {
+            'demo_rural': ('Rural Doctor', 'demo_password_123', '555-010-0001'),
+            'demo_specialist': ('Neurologist', 'demo_password_123', '555-010-0002'),
+            'demo_patient': ('Patient', 'demo_password_123', '555-010-0003')
+        }
+        
+        if username in demo_accounts:
+            expected_prof, expected_pwd, mobile = demo_accounts[username]
+            if profession == expected_prof and password == expected_pwd:
+                conn = get_db_connection()
+                try:
+                    user = db_execute(conn, 'SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+                    if not user:
+                        hashed_pw = generate_password_hash(password)
+                        safe_create_user(conn, username, hashed_pw, profession, mobile)
+                        # Re-run seed_demo_data to make sure patients exist
+                        seed_demo_data(conn)
+                    elif username == 'demo_rural':
+                        # Ensure patients exist for demo doctor
+                        patient_count = db_get_count(conn, 'SELECT COUNT(*) FROM patients WHERE rural_doctor_id = ?', (user['id'],))
+                        if patient_count == 0:
+                            seed_demo_data(conn)
+                except Exception as e:
+                    print(f">>> [LOGIN FALLBACK ERROR] {e}", flush=True)
+                finally:
+                    conn.close()
 
         conn = get_db_connection()
         user = db_execute(conn, 'SELECT * FROM users WHERE username = ? AND profession = ?', (username, profession)).fetchone()

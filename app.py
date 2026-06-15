@@ -15,9 +15,10 @@ try:
     import psycopg2
     from psycopg2 import extras
     try:
-        from psycogreen.eventlet import patch_psycopg
-        patch_psycopg()
-        print(">>> [SUCCESS] Psycogreen Activated (PostgreSQL is now Green)", flush=True)
+        # Disable psycogreen on Python 3.14 due to eventlet SSL handshake incompatibility
+        # from psycogreen.eventlet import patch_psycopg
+        # patch_psycopg()
+        print(">>> [INFO] Psycogreen Disabled for SSL stability on Python 3.14", flush=True)
     except ImportError:
         print(">>> [INFO] Psycogreen not found, using standard mode.", flush=True)
 except ImportError:

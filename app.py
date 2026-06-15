@@ -14,6 +14,9 @@ import traceback
 try:
     import psycopg2
     from psycopg2 import extras
+    import psycopg2.extensions
+    # Disable eventlet's auto-patched wait callback to fix the PostgreSQL SSL connection unexpectedly closed error on Python 3.14
+    psycopg2.extensions.set_wait_callback(None)
     try:
         # Disable psycogreen on Python 3.14 due to eventlet SSL handshake incompatibility
         # from psycogreen.eventlet import patch_psycopg

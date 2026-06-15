@@ -22,6 +22,42 @@ document.addEventListener("DOMContentLoaded", function() {
     const nextBtn = document.getElementById("next-btn");
     const progressFill = document.getElementById("progress-fill");
 
+    // Mutual Exclusivity Logic for Red Flags checkboxes
+    const redflagsNone = document.getElementById("redflags-none");
+    const otherRedflags = document.querySelectorAll('input[name="redflags"]:not(#redflags-none)');
+    if (redflagsNone) {
+        redflagsNone.addEventListener("change", function() {
+            if (this.checked) {
+                otherRedflags.forEach(cb => cb.checked = false);
+            }
+        });
+    }
+    otherRedflags.forEach(cb => {
+        cb.addEventListener("change", function() {
+            if (this.checked && redflagsNone) {
+                redflagsNone.checked = false;
+            }
+        });
+    });
+
+    // Mutual Exclusivity Logic for Disease Suspicion checkboxes
+    const suspicionNone = document.getElementById("suspicion-none");
+    const otherSuspicions = document.querySelectorAll('input[name="suspicion"]:not(#suspicion-none)');
+    if (suspicionNone) {
+        suspicionNone.addEventListener("change", function() {
+            if (this.checked) {
+                otherSuspicions.forEach(cb => cb.checked = false);
+            }
+        });
+    }
+    otherSuspicions.forEach(cb => {
+        cb.addEventListener("change", function() {
+            if (this.checked && suspicionNone) {
+                suspicionNone.checked = false;
+            }
+        });
+    });
+
     function updateProgress(stepId) {
         const pct = progressMap[stepId] || 0;
         progressFill.style.width = pct + "%";
@@ -73,10 +109,15 @@ document.addEventListener("DOMContentLoaded", function() {
         
         else if (currentStep === "step-redflags") {
             const checkedFlags = document.querySelectorAll('input[name="redflags"]:checked');
-            if (checkedFlags.length > 0) {
-                nextStep = "step-admission";
-            } else {
+            if (checkedFlags.length === 0) {
+                alert("Please select at least one option, or select 'None of the above' if no red flags are present.");
+                return;
+            }
+            const isNoneSelected = Array.from(checkedFlags).some(cb => cb.value === "none");
+            if (isNoneSelected) {
                 nextStep = "step-duration";
+            } else {
+                nextStep = "step-admission";
             }
         } 
         
@@ -115,23 +156,25 @@ document.addEventListener("DOMContentLoaded", function() {
         else if (currentStep === "step-suspicion") {
             // Read suspected diseases
             const checkedDiseases = document.querySelectorAll('input[name="suspicion"]:checked');
+            if (checkedDiseases.length === 0) {
+                alert("Please select at least one option, or select 'None of the above' if no specific disease is suspected.");
+                return;
+            }
             
             // Hide all treatment result cards first
             document.querySelectorAll(".disease-info-card").forEach(card => {
                 card.style.display = "none";
             });
+            const noSuspCard = document.getElementById("treatment-none");
+            if (noSuspCard) {
+                noSuspCard.style.display = "none";
+            }
 
             // Show selected treatment cards
-            if (checkedDiseases.length > 0) {
-                checkedDiseases.forEach(cb => {
-                    const card = document.getElementById("treatment-" + cb.value);
-                    if (card) card.style.display = "block";
-                });
-            } else {
-                // If nothing is selected, show a default message in treatment
-                const noSuspCard = document.getElementById("treatment-none");
-                if (noSuspCard) noSuspCard.style.display = "block";
-            }
+            checkedDiseases.forEach(cb => {
+                const card = document.getElementById("treatment-" + cb.value);
+                if (card) card.style.display = "block";
+            });
             
             nextStep = "step-treatment";
         }

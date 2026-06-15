@@ -228,7 +228,9 @@ def init_db():
         try:
             db_execute(conn, f'ALTER TABLE {table} ADD COLUMN {col} {dtype}')
             conn.commit()
-        except: pass
+        except:
+            if is_postgres:
+                conn.rollback()
 
     # Seed Demo Access Data
     try:

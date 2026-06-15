@@ -11,11 +11,58 @@
             background: linear-gradient(135deg, #0f172a, #082f49);
             min-height: 100vh;
             display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            margin: 0;
+            padding: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .login-wrapper {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .login-section {
+            min-height: 100vh;
+            width: 100%;
+            display: flex;
             align-items: center;
             justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+            position: relative;
+        }
+        .auth-card.glass-panel {
+            width: 100%;
+            max-width: 420px;
+            padding: 30px;
+            box-sizing: border-box;
+        }
+        @media (max-width: 480px) {
+            .auth-card.glass-panel {
+                padding: 24px 20px;
+            }
+            .demo-card.glass-panel {
+                padding: 20px 16px;
+            }
+        }
+        .demo-section {
+            width: 100%;
+            max-width: 420px;
+            padding: 0 20px 50px 20px;
+            box-sizing: border-box;
+            margin-top: -20px;
+        }
+        .demo-card.glass-panel {
+            width: 100%;
+            padding: 24px;
+            box-sizing: border-box;
         }
         .demo-section-divider {
-            margin: 25px 0 15px 0;
+            margin: 10px 0 20px 0;
             display: flex;
             align-items: center;
             text-align: center;
@@ -89,6 +136,33 @@
             width: 20px;
             text-align: center;
         }
+        .scroll-hint {
+            position: absolute;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: rgba(255, 255, 255, 0.45);
+            font-size: 0.7rem;
+            animation: bounce 2s infinite;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            pointer-events: none;
+            font-weight: 500;
+        }
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+                transform: translate(-50%, 0);
+            }
+            40% {
+                transform: translate(-50%, -8px);
+            }
+            60% {
+                transform: translate(-50%, -4px);
+            }
+        }
     </style>
 </head>
 <body class="dark-mode">
@@ -120,106 +194,104 @@
         <svg class="anim-float-horiz" style="top: 85%; left: 78%; width: 95px; opacity: 0.42; animation-delay: -4s; fill: #818cf8;" viewBox="0 0 24 24"><path d="M10.6,13.4C11,12.5 11.3,11.5 11.3,10.5C11.3,9.5 11,8.5 10.6,7.6L12,6.2C13.5,7.7 15,9.2 15,10.7C15,12.2 13.5,13.7 12,15.2L10.6,13.4Z" /></svg>
     </div>
 
-    <div class="container">
-        <div class="auth-card glass-panel">
-            <div class="auth-header text-center">
-                <i class="fa-solid fa-house-medical fa-3x text-info mb-3"></i>
-                <h1>easyMed</h1>
-                <p>Multi-Specialty Telemedicine Platform</p>
-            </div>
+    <div class="login-wrapper">
+        <div class="login-section">
+            <div class="auth-card glass-panel">
+                <div class="auth-header text-center">
+                    <i class="fa-solid fa-house-medical fa-3x text-info mb-3"></i>
+                    <h1>easyMed</h1>
+                    <p>Multi-Specialty Telemedicine Platform</p>
+                </div>
 
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    <div class="flash-messages">
-                        {% for category, message in messages %}
-                            <div class="flash {{ category }}">{{ message }}</div>
-                        {% endfor %}
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="flash-messages">
+                            {% for category, message in messages %}
+                                <div class="flash {{ category }}">{{ message }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
+                <form action="{{ url_for('login') }}" method="POST">
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" name="username" class="form-control" required placeholder="Enter your username">
                     </div>
-                {% endif %}
-            {% endwith %}
 
-            <form action="{{ url_for('login') }}" method="POST">
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" name="username" class="form-control" required placeholder="Enter your username">
+                    <div class="form-group">
+                        <label for="profession">Profession</label>
+                        <select id="profession" name="profession" class="form-control" required>
+                            <option value="" disabled selected>Select your profession</option>
+                            <option value="Patient">Patient</option>
+                            <option value="Rural Doctor">Rural Doctor</option>
+                            <option value="Cardiologist">Cardiologist</option>
+                            <option value="Neurologist">Neurologist</option>
+                            <option value="Dermatologist">Dermatologist</option>
+                            <option value="Oncologist">Oncologist</option>
+                            <option value="Nephrologist">Nephrologist</option>
+                            <option value="Pulmonologist">Pulmonologist</option>
+                            <option value="Clinical Decision Support">Clinical Decision Support</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" class="form-control" required placeholder="Enter your password">
+                    </div>
+
+                    <div class="forgot-password">
+                        <a href="{{ url_for('forgot_password') }}">Forgot Password?</a>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Login</button>
+                </form>
+
+                <div class="auth-footer">
+                    <p>New User? <a href="{{ url_for('register') }}">Register here</a></p>
                 </div>
-
-                <div class="form-group">
-                    <label for="profession">Profession</label>
-                    <select id="profession" name="profession" class="form-control" required>
-                        <option value="" disabled selected>Select your profession</option>
-                        <option value="Patient">Patient</option>
-                        <option value="Rural Doctor">Rural Doctor</option>
-                        <option value="Cardiologist">Cardiologist</option>
-                        <option value="Neurologist">Neurologist</option>
-                        <option value="Dermatologist">Dermatologist</option>
-                        <option value="Oncologist">Oncologist</option>
-                        <option value="Nephrologist">Nephrologist</option>
-                        <option value="Pulmonologist">Pulmonologist</option>
-                        <option value="Clinical Decision Support">Clinical Decision Support</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" class="form-control" required placeholder="Enter your password">
-                </div>
-
-                <div class="forgot-password">
-                    <a href="{{ url_for('forgot_password') }}">Forgot Password?</a>
-                </div>
-
-                <button type="submit" class="btn btn-primary">Login</button>
-            </form>
-
-            <!-- Google Play Reviewer / Demo Access -->
-            <div class="demo-section-divider">Reviewer & Demo Access</div>
-            <div class="demo-btn-container">
-                <button type="button" class="demo-btn demo-btn-rural" onclick="loginAsDemo('demo_rural', 'Rural Doctor', 'demo_password_123')">
-                    <span>
-                        <i class="fa-solid fa-user-md role-icon text-indigo"></i>
-                        Demo Rural Doctor
-                    </span>
-                    <i class="fa-solid fa-chevron-right" style="opacity: 0.6; font-size: 0.75rem;"></i>
-                </button>
-                <button type="button" class="demo-btn demo-btn-specialist" onclick="loginAsDemo('demo_specialist', 'Neurologist', 'demo_password_123')">
-                    <span>
-                        <i class="fa-solid fa-brain role-icon text-purple"></i>
-                        Demo Neurologist
-                    </span>
-                    <i class="fa-solid fa-chevron-right" style="opacity: 0.6; font-size: 0.75rem;"></i>
-                </button>
-                <button type="button" class="demo-btn demo-btn-patient" onclick="loginAsDemo('demo_patient', 'Patient', 'demo_password_123')">
-                    <span>
-                        <i class="fa-solid fa-user-injured role-icon text-success"></i>
-                        Demo Patient
-                    </span>
-                    <i class="fa-solid fa-chevron-right" style="opacity: 0.6; font-size: 0.75rem;"></i>
-                </button>
-                <button type="button" class="demo-btn demo-btn-cdss" onclick="loginAsDemo('demo_cdss', 'Clinical Decision Support', 'demo_password_123')">
-                    <span>
-                        <i class="fa-solid fa-laptop-medical role-icon text-warning"></i>
-                        Demo Clinical Decision Support
-                    </span>
-                    <i class="fa-solid fa-chevron-right" style="opacity: 0.6; font-size: 0.75rem;"></i>
-                </button>
             </div>
 
-            <script>
-                function loginAsDemo(username, profession, password) {
-                    document.getElementById('username').value = username;
-                    document.getElementById('profession').value = profession;
-                    document.getElementById('password').value = password;
-                    // Auto-submit the login form
-                    const form = document.querySelector('form');
-                    if (form) {
-                        form.submit();
-                    }
-                }
-            </script>
+            <!-- Scroll Indicator -->
+            <div class="scroll-hint">
+                <span>Demo Access Below</span>
+                <i class="fa-solid fa-chevron-down mt-1"></i>
+            </div>
+        </div>
 
-            <div class="auth-footer">
-                <p>New User? <a href="{{ url_for('register') }}">Register here</a></p>
+        <div class="demo-section">
+            <div class="demo-card glass-panel">
+                <div class="demo-section-divider">Reviewer & Demo Access</div>
+                <div class="demo-btn-container">
+                    <button type="button" class="demo-btn demo-btn-rural" onclick="loginAsDemo('demo_rural', 'Rural Doctor', 'demo_password_123')">
+                        <span>
+                            <i class="fa-solid fa-user-md role-icon text-indigo"></i>
+                            Demo Rural Doctor
+                        </span>
+                        <i class="fa-solid fa-chevron-right" style="opacity: 0.6; font-size: 0.75rem;"></i>
+                    </button>
+                    <button type="button" class="demo-btn demo-btn-specialist" onclick="loginAsDemo('demo_specialist', 'Neurologist', 'demo_password_123')">
+                        <span>
+                            <i class="fa-solid fa-brain role-icon text-purple"></i>
+                            Demo Neurologist
+                        </span>
+                        <i class="fa-solid fa-chevron-right" style="opacity: 0.6; font-size: 0.75rem;"></i>
+                    </button>
+                    <button type="button" class="demo-btn demo-btn-patient" onclick="loginAsDemo('demo_patient', 'Patient', 'demo_password_123')">
+                        <span>
+                            <i class="fa-solid fa-user-injured role-icon text-success"></i>
+                            Demo Patient
+                        </span>
+                        <i class="fa-solid fa-chevron-right" style="opacity: 0.6; font-size: 0.75rem;"></i>
+                    </button>
+                    <button type="button" class="demo-btn demo-btn-cdss" onclick="loginAsDemo('demo_cdss', 'Clinical Decision Support', 'demo_password_123')">
+                        <span>
+                            <i class="fa-solid fa-laptop-medical role-icon text-warning"></i>
+                            Demo Clinical Decision Support
+                        </span>
+                        <i class="fa-solid fa-chevron-right" style="opacity: 0.6; font-size: 0.75rem;"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </div>

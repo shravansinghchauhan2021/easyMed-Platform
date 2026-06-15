@@ -62,6 +62,8 @@ if not GEMINI_API_KEY:
 # --- Step 2: Database Helpers ---
 def get_db_connection():
     if DATABASE_URL:
+        import psycopg2.extensions
+        psycopg2.extensions.set_wait_callback(None)
         return psycopg2.connect(DATABASE_URL)
     else:
         conn = sqlite3.connect(DATABASE)

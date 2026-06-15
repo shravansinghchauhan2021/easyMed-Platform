@@ -696,67 +696,73 @@ def privacy():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form['username']
-        profession = request.form['profession']
-        password = request.form['password']
+        try:
+            username = request.form['username']
+            profession = request.form['profession']
+            password = request.form['password']
 
-        # --- Dynamic Demo Account Creation / Provisioning at login time ---
-        demo_accounts = {
-            'demo_rural': ('Rural Doctor', 'demo_password_123', '555-010-0001'),
-            'demo_specialist': ('Neurologist', 'demo_password_123', '555-010-0002'),
-            'demo_patient': ('Patient', 'demo_password_123', '555-010-0003'),
-            'demo_cdss': ('Clinical Decision Support', 'demo_password_123', '555-010-0004')
-        }
-        
-        if username in demo_accounts:
-            expected_prof, expected_pwd, mobile = demo_accounts[username]
-            if profession == expected_prof and password == expected_pwd:
-                conn = get_db_connection()
-                try:
-                    user = db_execute(conn, 'SELECT * FROM users WHERE username = ?', (username,)).fetchone()
-                    if not user:
-                        hashed_pw = generate_password_hash(password)
-                        safe_create_user(conn, username, hashed_pw, profession, mobile)
-                        # Re-run seed_demo_data to make sure patients exist
-                        seed_demo_data(conn)
-                    elif username == 'demo_rural':
-                        # Ensure patients exist for demo doctor
-                        patient_count = db_get_count(conn, 'SELECT COUNT(*) FROM patients WHERE rural_doctor_id = ?', (user['id'],))
-                        if patient_count == 0:
+            # --- Dynamic Demo Account Creation / Provisioning at login time ---
+            demo_accounts = {
+                'demo_rural': ('Rural Doctor', 'demo_password_123', '555-010-0001'),
+                'demo_specialist': ('Neurologist', 'demo_password_123', '555-010-0002'),
+                'demo_patient': ('Patient', 'demo_password_123', '555-010-0003'),
+                'demo_cdss': ('Clinical Decision Support', 'demo_password_123', '555-010-0004')
+            }
+            
+            if username in demo_accounts:
+                expected_prof, expected_pwd, mobile = demo_accounts[username]
+                if profession == expected_prof and password == expected_pwd:
+                    conn = get_db_connection()
+                    try:
+                        user = db_execute(conn, 'SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+                        if not user:
+                            hashed_pw = generate_password_hash(password)
+                            safe_create_user(conn, username, hashed_pw, profession, mobile)
+                            # Re-run seed_demo_data to make sure patients exist
                             seed_demo_data(conn)
-                except Exception as e:
-                    print(f">>> [LOGIN FALLBACK ERROR] {e}", flush=True)
-                finally:
-                    conn.close()
+                        elif username == 'demo_rural':
+                            # Ensure patients exist for demo doctor
+                            patient_count = db_get_count(conn, 'SELECT COUNT(*) FROM patients WHERE rural_doctor_id = ?', (user['id'],))
+                            if patient_count == 0:
+                                seed_demo_data(conn)
+                    except Exception as e:
+                        print(f">>> [LOGIN FALLBACK ERROR] {e}", flush=True)
+                    finally:
+                        conn.close()
 
-        conn = get_db_connection()
-        user = db_execute(conn, 'SELECT * FROM users WHERE username = ? AND profession = ?', (username, profession)).fetchone()
-        conn.close()
-
-        if user and check_password_hash(user['password'], password):
-            session['user_id'] = user['id']
-            session['username'] = user['username']
-            session['profession'] = user['profession']
-            
-            # Set user status to Online
             conn = get_db_connection()
-            db_execute(conn, "UPDATE users SET status = 'Online' WHERE id = ?", (user['id'],))
-            conn.commit()
+            user = db_execute(conn, 'SELECT * FROM users WHERE username = ? AND profession = ?', (username, profession)).fetchone()
             conn.close()
-            
-            # flash('Login successful!', 'success')
-            if user['profession'] == 'Rural Doctor':
-                return redirect(url_for('rural_dashboard'))
-            elif user['profession'] in SPECIALIST_ROLES:
-                return redirect(url_for('specialist_dashboard'))
-            elif user['profession'] == 'Patient':
-                return redirect(url_for('patient_dashboard'))
-            elif user['profession'] == 'Clinical Decision Support':
-                return redirect(url_for('cdss_dashboard'))
+
+            if user and check_password_hash(user['password'], password):
+                session['user_id'] = user['id']
+                session['username'] = user['username']
+                session['profession'] = user['profession']
+                
+                # Set user status to Online
+                conn = get_db_connection()
+                db_execute(conn, "UPDATE users SET status = 'Online' WHERE id = ?", (user['id'],))
+                conn.commit()
+                conn.close()
+                
+                # flash('Login successful!', 'success')
+                if user['profession'] == 'Rural Doctor':
+                    return redirect(url_for('rural_dashboard'))
+                elif user['profession'] in SPECIALIST_ROLES:
+                    return redirect(url_for('specialist_dashboard'))
+                elif user['profession'] == 'Patient':
+                    return redirect(url_for('patient_dashboard'))
+                elif user['profession'] == 'Clinical Decision Support':
+                    return redirect(url_for('cdss_dashboard'))
+                else:
+                    return redirect(url_for('dashboard')) # fallback
             else:
-                return redirect(url_for('dashboard')) # fallback
-        else:
-            flash('Invalid credentials. Please try again.', 'error')
+                flash('Invalid credentials. Please try again.', 'error')
+        except Exception as e:
+            import traceback
+            tb_str = traceback.format_exc()
+            print(f">>> [LOGIN ROUTE FATAL ERROR] {tb_str}", flush=True)
+            return f"<h3>Login Fatal Error Exception Traceback:</h3><pre>{tb_str}</pre>", 500
 
     return render_template('login.html')
 

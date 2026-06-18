@@ -398,3 +398,102 @@ select.form-control {
     padding: 0 15px;
     white-space: nowrap;
 }
+
+/* Desktop-specific layout improvements for authentication pages (login, register, forgot password) */
+@media (min-width: 481px) {
+    /* Scale up wrapper and card containers on web/desktop */
+    .container {
+        max-width: 540px !important;
+        padding: 30px !important;
+    }
+    
+    .login-wrapper, .demo-section {
+        max-width: 540px !important;
+    }
+    
+    .auth-card.glass-panel, .demo-card.glass-panel {
+        padding: 50px 45px !important;
+        border-radius: 24px !important;
+    }
+    
+    /* Scale up headers and descriptions */
+    .auth-header h1 {
+        font-size: 32px !important;
+        margin-bottom: 8px !important;
+    }
+    
+    .auth-header p {
+        font-size: 15.5px !important;
+    }
+    
+    /* Scale up form labels, inputs, and selectors */
+    .form-group {
+        margin-bottom: 24px !important;
+    }
+    
+    .form-group label {
+        font-size: 15px !important;
+        margin-bottom: 10px !important;
+        font-weight: 600 !important;
+    }
+    
+    .form-control {
+        padding: 16px 20px !important;
+        font-size: 16.5px !important;
+        border-radius: 14px !important;
+        height: auto !important;
+    }
+    
+    select.form-control {
+        background-position: right 20px center !important;
+        background-size: 16px !important;
+    }
+    
+    /* Scale up buttons and handle secondary button alignments */
+    .btn {
+        padding: 16px 24px !important;
+        font-size: 17px !important;
+        border-radius: 14px !important;
+    }
+    
+    /* Fix alignment for inline input + button (OTP section) */
+    .input-with-button {
+        display: flex !important;
+        gap: 12px !important;
+        align-items: stretch !important;
+    }
+    
+    .input-with-button .form-control {
+        flex: 1 !important;
+    }
+    
+    .input-with-button button.btn-secondary {
+        margin-top: 0 !important; /* Remove the 10px top margin only when aligned inline */
+        padding: 0 25px !important;
+        height: auto !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    
+    /* Scale up footer and links */
+    .auth-footer {
+        margin-top: 30px !important;
+        font-size: 15px !important;
+    }
+    
+    .auth-footer p, .auth-footer a, .forgot-password a {
+        font-size: 14.5px !important;
+    }
+    
+    .forgot-password {
+        margin-bottom: 24px !important;
+    }
+    
+    .flash {
+        padding: 14px 18px !important;
+        font-size: 14.5px !important;
+        border-radius: 12px !important;
+        margin-bottom: 20px !important;
+    }
+}

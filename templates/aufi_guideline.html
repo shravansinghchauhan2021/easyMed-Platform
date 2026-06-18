@@ -63,42 +63,28 @@
                 <!-- STEP 3: RED FLAGS -->
                 <div class="wizard-step" id="step-redflags">
                     <p class="step-question">Ask: Does the patient have any red flag sign</p>
+                    
+                    <!-- Red Flag Signs Reference List (Disclaimer) -->
+                    <div class="redflags-reference" style="margin: 15px 0 25px 0; background: rgba(239, 68, 68, 0.04); border-left: 3px solid var(--error-color); padding: 15px 20px; border-radius: 8px;">
+                        <p style="font-weight: 600; color: var(--error-color); margin-bottom: 10px; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em;">Red Flag Criteria:</p>
+                        <ul style="margin: 0; padding-left: 20px; color: var(--text-color); font-size: 0.95rem; display: flex; flex-direction: column; gap: 6px; line-height: 1.4;">
+                            <li>Hyperpyrexia (&ge;106.7&deg;F), Hypothermia (&le;95&deg;F)</li>
+                            <li>Prostration, Shortness of breath</li>
+                            <li>Arterial oxygen saturation &lt; 90%, BP &lt; 90/&lt;60 mm Hg</li>
+                            <li>Seizure, altered sensorium, neck stiffness</li>
+                            <li>Repeated vomiting or inability to tolerate oral intake</li>
+                            <li>Jaundice, Bleeding</li>
+                        </ul>
+                    </div>
+
                     <div class="options-list">
                         <label class="option-item">
-                            <input type="checkbox" name="redflags" value="hyperpyrexia">
-                            <span class="option-label">Hyperpyrexia (&ge;106.7&deg;F), Hypothermia (&le;95&deg;F)</span>
+                            <input type="radio" name="redflags" value="yes">
+                            <span class="option-label">Yes</span>
                         </label>
                         <label class="option-item">
-                            <input type="checkbox" name="redflags" value="prostration">
-                            <span class="option-label">Prostration</span>
-                        </label>
-                        <label class="option-item">
-                            <input type="checkbox" name="redflags" value="sob">
-                            <span class="option-label">Shortness of breath</span>
-                        </label>
-                        <label class="option-item">
-                            <input type="checkbox" name="redflags" value="oxygen">
-                            <span class="option-label">Arterial oxygen saturation<90%</span>
-                        </label>
-                        <label class="option-item">
-                            <input type="checkbox" name="redflags" value="bp">
-                            <span class="option-label">BP<90/<60 mm Hg</span>
-                        </label>
-                        <label class="option-item">
-                            <input type="checkbox" name="redflags" value="seizure">
-                            <span class="option-label">Seizure, altered sensorium, neck stiffness</span>
-                        </label>
-                        <label class="option-item">
-                            <input type="checkbox" name="redflags" value="vomiting">
-                            <span class="option-label">Repeated vomiting or inability to tolerate oral intake</span>
-                        </label>
-                        <label class="option-item">
-                            <input type="checkbox" name="redflags" value="jaundice">
-                            <span class="option-label">Jaundice, Bleeding</span>
-                        </label>
-                        <label class="option-item" style="border: 1px dashed rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.03);">
-                            <input type="checkbox" name="redflags" value="none" id="redflags-none">
-                            <span class="option-label" style="color: var(--success-color); font-weight: 600;">None of the above / No red flag signs</span>
+                            <input type="radio" name="redflags" value="no">
+                            <span class="option-label">No</span>
                         </label>
                     </div>
                 </div>

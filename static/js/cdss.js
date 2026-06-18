@@ -22,23 +22,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const nextBtn = document.getElementById("next-btn");
     const progressFill = document.getElementById("progress-fill");
 
-    // Mutual Exclusivity Logic for Red Flags checkboxes
-    const redflagsNone = document.getElementById("redflags-none");
-    const otherRedflags = document.querySelectorAll('input[name="redflags"]:not(#redflags-none)');
-    if (redflagsNone) {
-        redflagsNone.addEventListener("change", function() {
-            if (this.checked) {
-                otherRedflags.forEach(cb => cb.checked = false);
-            }
-        });
-    }
-    otherRedflags.forEach(cb => {
-        cb.addEventListener("change", function() {
-            if (this.checked && redflagsNone) {
-                redflagsNone.checked = false;
-            }
-        });
-    });
+
 
     // Mutual Exclusivity Logic for Disease Suspicion checkboxes
     const suspicionNone = document.getElementById("suspicion-none");
@@ -108,16 +92,15 @@ document.addEventListener("DOMContentLoaded", function() {
         } 
         
         else if (currentStep === "step-redflags") {
-            const checkedFlags = document.querySelectorAll('input[name="redflags"]:checked');
-            if (checkedFlags.length === 0) {
-                alert("Please select at least one option, or select 'None of the above' if no red flags are present.");
+            const selected = document.querySelector('input[name="redflags"]:checked');
+            if (!selected) {
+                alert("Please select Yes or No to continue.");
                 return;
             }
-            const isNoneSelected = Array.from(checkedFlags).some(cb => cb.value === "none");
-            if (isNoneSelected) {
-                nextStep = "step-duration";
-            } else {
+            if (selected.value === "yes") {
                 nextStep = "step-admission";
+            } else {
+                nextStep = "step-duration";
             }
         } 
         

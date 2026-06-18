@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", function() {
         "step-duration": 55,
         "step-day14": 75,
         "step-day14-positive": 100,
+        "step-day14-negative": 100,
         "step-day57": 75,
         "step-day7plus": 75,
         "step-suspicion": 90,
@@ -66,7 +67,7 @@ document.addEventListener("DOMContentLoaded", function() {
         prevBtn.disabled = (stepHistory.length === 0);
         
         // If it's a terminal step, hide next button or show a finish message
-        const isTerminal = ["step-unimplemented", "step-admission", "step-day14-positive", "step-treatment"].includes(stepId);
+        const isTerminal = ["step-unimplemented", "step-admission", "step-day14-positive", "step-day14-negative", "step-treatment"].includes(stepId);
         if (isTerminal) {
             nextBtn.style.display = "none";
         } else {
@@ -128,7 +129,7 @@ document.addEventListener("DOMContentLoaded", function() {
             if (selected.value === "positive") {
                 nextStep = "step-day14-positive";
             } else {
-                nextStep = "step-suspicion";
+                nextStep = "step-day14-negative";
             }
         } 
         

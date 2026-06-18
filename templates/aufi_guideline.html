@@ -120,9 +120,8 @@
                     <div class="result-message-box info-box" style="margin-bottom: 25px; text-align: left;">
                         <h4 style="font-size: 1.1rem; text-transform: none; margin-bottom: 5px;">Care Guideline:</h4>
                         <p style="font-weight: 600;">Consider supportive care without antibiotics</p>
-                        <p style="font-size: 0.9rem; margin-top: 10px; opacity: 0.85;">Test for dengue NS1 ELISA+ Peripheral blood smear (+ RDT) for malaria+ CBC</p>
                     </div>
-                    <p class="step-question">Result</p>
+                    <p class="step-question">Result of: Test for dengue NS1 ELISA+ Peripheral blood smear (+ RDT) for malaria+ CBC</p>
                     <div class="options-list">
                         <label class="option-item">
                             <input type="radio" name="day14-result" value="positive">
@@ -139,7 +138,13 @@
                 <div class="wizard-step" id="step-day14-positive">
                     <div class="result-message-box info-box">
                         <h4>Treat accordingly dengue/ malaria based on positive result</h4>
-                        <p>Administer standard clinical protocol for laboratory-confirmed diagnosis.</p>
+                    </div>
+                </div>
+
+                <!-- STEP 7b: DAY 1-4 NEGATIVE RESULT -->
+                <div class="wizard-step" id="step-day14-negative">
+                    <div class="result-message-box info-box">
+                        <h4>Consider alternative diagnosis</h4>
                     </div>
                 </div>
 

@@ -4,16 +4,20 @@
 **EasyMedChoice**
 
 ## Short Description
-Track your daily wellness habits, activity goals, and personal journal.
+Clinical decision support, secure telemedicine consultations & case tracking.
 
 ## Full Description
-EasyMedChoice is a simple personal organizer and daily activity diary designed to help you stay motivated on your wellness journey. 
+EasyMedChoice is a secure telemedicine and clinical decision support platform designed to connect patients, rural healthcare providers, and medical specialists to improve healthcare accessibility. 
 
-With EasyMedChoice, you can keep a private daily journal, plan your wellness habits, and log your general activities to support your active lifestyle.
+The app facilitates remote consultations, streamlined referral management, and interactive clinical decision support workflows.
 
 Key Features:
-- Activity Journal: Record your daily exercises, walks, or general activity habits.
-- Wellness Diary: A secure space to log your daily thoughts, reflections, and wellness goals.
-- Lifestyle Habits: Keep track of your schedules and organize your healthy living routines.
+- **Clinical Decision Support (CDSS)**: Access structured clinical decision guidelines, including the Acute Undifferentiated Febrile Illness (AUFI) management flowchart and URD symptom diagnostic wizards, to help assess symptom severity and guide clinical pathways.
+- **Telemedicine & Consultations**: Connect patients with rural doctors and specialized medical consultants for remote opinions.
+- **Secure Case Management**: Create, assign, and track patient clinical cases, history, and referral statuses.
+- **Medical Imaging Viewer**: Built-in support for viewing diagnostic medical images (DICOM format) directly within clinical consultation records.
+- **Real-Time Communication**: Secure chat messaging for healthcare providers and patients to collaborate on patient care.
 
-Please note: EasyMedChoice is a personal tracking journal intended for general educational and informational purposes only. It is not a medical device, does not provide medical diagnosis, clinical advice, or treatment, and should not be used as a substitute for professional medical consultation. Always consult with a qualified doctor or healthcare professional for any medical advice or decisions.
+## Important Medical Disclaimer
+EasyMedChoice is a clinical decision support and telemedicine communication tool. It is designed to assist healthcare professionals and patients in managing consultation workflows and viewing established medical guidelines. All final clinical diagnoses and treatment decisions must be made by qualified, licensed healthcare professionals. The app does not replace professional clinical judgment.
+

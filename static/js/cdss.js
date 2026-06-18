@@ -13,9 +13,8 @@ document.addEventListener("DOMContentLoaded", function() {
         "step-day14": 75,
         "step-day14-positive": 100,
         "step-day14-negative": 100,
-        "step-day57": 75,
-        "step-day7plus": 75,
-        "step-suspicion": 90,
+        "step-day57": 85,
+        "step-day7plus": 85,
         "step-treatment": 100
     };
 
@@ -26,21 +25,23 @@ document.addEventListener("DOMContentLoaded", function() {
 
 
     // Mutual Exclusivity Logic for Disease Suspicion checkboxes
-    const suspicionNone = document.getElementById("suspicion-none");
-    const otherSuspicions = document.querySelectorAll('input[name="suspicion"]:not(#suspicion-none)');
-    if (suspicionNone) {
-        suspicionNone.addEventListener("change", function() {
-            if (this.checked) {
-                otherSuspicions.forEach(cb => cb.checked = false);
-            }
-        });
-    }
-    otherSuspicions.forEach(cb => {
-        cb.addEventListener("change", function() {
-            if (this.checked && suspicionNone) {
-                suspicionNone.checked = false;
-            }
-        });
+    document.querySelectorAll(".wizard-step").forEach(step => {
+        const noneCheckbox = step.querySelector('.suspicion-none-class');
+        const otherCheckboxes = step.querySelectorAll('input[name="suspicion"]:not(.suspicion-none-class)');
+        if (noneCheckbox) {
+            noneCheckbox.addEventListener("change", function() {
+                if (this.checked) {
+                    otherCheckboxes.forEach(cb => cb.checked = false);
+                }
+            });
+            otherCheckboxes.forEach(cb => {
+                cb.addEventListener("change", function() {
+                    if (this.checked) {
+                        noneCheckbox.checked = false;
+                    }
+                });
+            });
+        }
     });
 
     function updateProgress(stepId) {
@@ -134,14 +135,10 @@ document.addEventListener("DOMContentLoaded", function() {
         } 
         
         else if (currentStep === "step-day57" || currentStep === "step-day7plus") {
-            nextStep = "step-suspicion";
-        } 
-        
-        else if (currentStep === "step-suspicion") {
-            // Read suspected diseases
-            const checkedDiseases = document.querySelectorAll('input[name="suspicion"]:checked');
+            const activeStep = document.getElementById(currentStep);
+            const checkedDiseases = activeStep.querySelectorAll('input[name="suspicion"]:checked');
             if (checkedDiseases.length === 0) {
-                alert("Please select at least one option, or select 'None of the above' if no specific disease is suspected.");
+                alert("Please select at least one option, or select 'None of the above'.");
                 return;
             }
             

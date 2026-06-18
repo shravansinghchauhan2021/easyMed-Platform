@@ -161,6 +161,35 @@
                         <li>Typhi dot & send blood culture for detecting typhoid</li>
                         <li>Chest X-Ray if respiratory symptoms present</li>
                     </ul>
+
+                    <!-- Remark banner -->
+                    <div class="remark-banner" style="margin: 20px 0; background: rgba(99, 102, 241, 0.05); border-left: 3px solid var(--primary-color); padding: 12px 16px; border-radius: 8px; font-size: 0.95rem; font-weight: 500; color: var(--text-color);">
+                        If Dengue NS1 ELISA/Malaria positive, then treat accordingly. If negative:
+                    </div>
+
+                    <p class="step-question" style="font-size: 1.1rem; margin-top: 25px;">Suspecting what?</p>
+                    <div class="options-list">
+                        <label class="option-item">
+                            <input type="checkbox" name="suspicion" value="typhoid">
+                            <span class="option-label">Typhoid?</span>
+                        </label>
+                        <label class="option-item">
+                            <input type="checkbox" name="suspicion" value="scrub">
+                            <span class="option-label">Scrub Typhus?</span>
+                        </label>
+                        <label class="option-item">
+                            <input type="checkbox" name="suspicion" value="lepto">
+                            <span class="option-label">Leptospirosis?</span>
+                        </label>
+                        <label class="option-item">
+                            <input type="checkbox" name="suspicion" value="chiki">
+                            <span class="option-label">Chikungunya?</span>
+                        </label>
+                        <label class="option-item" style="border: 1px dashed rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.03);">
+                            <input type="checkbox" name="suspicion" value="none" class="suspicion-none-class">
+                            <span class="option-label" style="color: var(--success-color); font-weight: 600;">None of the above / No specific suspicion</span>
+                        </label>
+                    </div>
                 </div>
 
                 <!-- STEP 9: DAY >7 PATH -->
@@ -176,30 +205,32 @@
                         <li>Urine RE/ME</li>
                         <li>USG abdomen to look for abscess or localized collection</li>
                     </ul>
-                </div>
 
-                <!-- STEP 10: DISEASE SUSPICION -->
-                <div class="wizard-step" id="step-suspicion">
-                    <p class="step-question">Suspecting what?</p>
+                    <!-- Remark banner -->
+                    <div class="remark-banner" style="margin: 20px 0; background: rgba(99, 102, 241, 0.05); border-left: 3px solid var(--primary-color); padding: 12px 16px; border-radius: 8px; font-size: 0.95rem; font-weight: 500; color: var(--text-color);">
+                        If Dengue NS1 ELISA/Malaria positive, then treat accordingly. If negative:
+                    </div>
+
+                    <p class="step-question" style="font-size: 1.1rem; margin-top: 25px;">Suspecting what?</p>
                     <div class="options-list">
                         <label class="option-item">
                             <input type="checkbox" name="suspicion" value="typhoid">
-                            <span class="option-label">Typhoid</span>
+                            <span class="option-label">Typhoid?</span>
                         </label>
                         <label class="option-item">
                             <input type="checkbox" name="suspicion" value="scrub">
-                            <span class="option-label">Scrub Typhus</span>
+                            <span class="option-label">Scrub Typhus?</span>
                         </label>
                         <label class="option-item">
                             <input type="checkbox" name="suspicion" value="lepto">
-                            <span class="option-label">Leptospirosis</span>
+                            <span class="option-label">Leptospirosis?</span>
                         </label>
                         <label class="option-item">
                             <input type="checkbox" name="suspicion" value="chiki">
-                            <span class="option-label">Chikungunya</span>
+                            <span class="option-label">Chikungunya?</span>
                         </label>
                         <label class="option-item" style="border: 1px dashed rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.03);">
-                            <input type="checkbox" name="suspicion" value="none" id="suspicion-none">
+                            <input type="checkbox" name="suspicion" value="none" class="suspicion-none-class">
                             <span class="option-label" style="color: var(--success-color); font-weight: 600;">None of the above / No specific suspicion</span>
                         </label>
                     </div>

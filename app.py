@@ -62,16 +62,19 @@ if not GEMINI_API_KEY:
 # --- Step 2: Database Helpers ---
 def get_db_connection():
     if DATABASE_URL:
-        import psycopg2.extensions
-        psycopg2.extensions.set_wait_callback(None)
-        return psycopg2.connect(DATABASE_URL)
-    else:
-        conn = sqlite3.connect(DATABASE)
-        conn.row_factory = sqlite3.Row
-        return conn
+        try:
+            import psycopg2.extensions
+            psycopg2.extensions.set_wait_callback(None)
+            return psycopg2.connect(DATABASE_URL, connect_timeout=5)
+        except Exception as e:
+            print(f">>> [DATABASE WARNING] PostgreSQL connection failed: {e}. Falling back to SQLite local database.", flush=True)
+    
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 def db_execute(conn, query, args=()):
-    is_postgres = hasattr(conn, 'cursor_factory') or DATABASE_URL is not None
+    is_postgres = hasattr(conn, 'cursor_factory')
     if is_postgres:
         query = query.replace('?', '%s')
         cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
@@ -82,7 +85,7 @@ def db_execute(conn, query, args=()):
 
 def db_get_last_rowid(conn, cursor):
     """Handles getting the last inserted ID across databases"""
-    is_postgres = hasattr(conn, 'cursor_factory') or DATABASE_URL is not None
+    is_postgres = hasattr(conn, 'cursor_factory')
     if is_postgres:
         cursor.execute("SELECT LASTVAL()")
         return cursor.fetchone()['lastval']
@@ -91,7 +94,7 @@ def db_get_last_rowid(conn, cursor):
 
 def db_get_count(conn, query, args=()):
     """Safely get a COUNT(*) value across SQLite and Postgres"""
-    is_postgres = hasattr(conn, 'cursor_factory') or DATABASE_URL is not None
+    is_postgres = hasattr(conn, 'cursor_factory')
     if is_postgres:
         query = query.replace('?', '%s')
         if "COUNT(*)" in query and "as count" not in query.lower():
@@ -105,7 +108,7 @@ def db_get_count(conn, query, args=()):
 
 def init_db():
     conn = get_db_connection()
-    is_postgres = DATABASE_URL is not None
+    is_postgres = hasattr(conn, 'cursor_factory')
     
     if is_postgres:
         print("\n" + "="*50)
@@ -248,7 +251,7 @@ def init_db():
     conn.close()
 
 def safe_create_user(conn, username, hashed_pw, profession, mobile):
-    is_postgres = DATABASE_URL is not None
+    is_postgres = hasattr(conn, 'cursor_factory')
     try:
         cur = db_execute(conn, "INSERT INTO users (username, password, profession, mobile_number, status) VALUES (?, ?, ?, ?, 'Offline')",
                          (username, hashed_pw, profession, mobile))
@@ -295,7 +298,7 @@ def safe_create_user(conn, username, hashed_pw, profession, mobile):
                     return None
 
 def seed_demo_data(conn):
-    is_postgres = DATABASE_URL is not None
+    is_postgres = hasattr(conn, 'cursor_factory')
     import random
     
     # 1. Create/ensure demo users exist
@@ -678,7 +681,7 @@ def create_notification(user_id, message, link="#", patient_id=None, conn=None):
         conn = get_db_connection()
         close_conn = True
     
-    is_postgres = DATABASE_URL is not None
+    is_postgres = hasattr(conn, 'cursor_factory')
     insert_sql = 'INSERT INTO notifications (user_id, patient_id, message, link) VALUES (?, ?, ?, ?) '
     params = (user_id, patient_id, message, link)
     
@@ -1381,7 +1384,7 @@ def add_patient():
         patient_user_id = patient_user['id'] if patient_user else None
 
         # For Postgres, we can use INSERT ... RETURNING id
-        is_postgres = DATABASE_URL is not None
+        is_postgres = hasattr(conn, 'cursor_factory')
         insert_sql = '''
             INSERT INTO patients (
                 patient_name, patient_mobile, patient_user_id, age, gender, blood_pressure, heart_rate, oxygen_level, 
@@ -1602,7 +1605,7 @@ def analytics_dashboard():
     risk_counts = [risk_dict[lvl] for lvl in risk_labels]
     
     # 3. Monthly Trends
-    if DATABASE_URL:
+    if hasattr(conn, 'cursor_factory'):
         # PostgreSQL syntax for month
         trend_data = db_execute(conn, "SELECT to_char(created_at, 'YYYY-MM') as month, COUNT(*) as count FROM patients GROUP BY month ORDER BY month ASC LIMIT 12").fetchall()
     else:
